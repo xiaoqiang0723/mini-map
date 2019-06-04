@@ -5,13 +5,14 @@ RUN  apk add tzdata --update --no-cache \
     && echo "Asia/Shanghai" /etc/localtime \
     && apk del tzdata
 COPY ./package.json ./package.json
-COPY ./config.js ./config.js
 
 RUN  apk add --no-cache python make g++ \
     && npm i --production \
     && npm cache clean --force \
     && apk del python make g++
-    
+
+COPY ./config.js ./config.js
+
 CMD node . --mini-map-app-name="mini-map"
 
 EXPOSE 80
