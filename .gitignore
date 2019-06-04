@@ -1,0 +1,20 @@
+# mini-app ignore
+output
+build
+node_modules
+bower_components
+upload
+/build-*/
+/config.js
+package-lock.json
+
+# legacy ignore
+/static
+/server/config.js
+temp
+tmp
+
+# custom ignore
+bin
+.idea
+.vscode
