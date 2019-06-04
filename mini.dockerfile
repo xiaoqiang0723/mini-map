@@ -10,7 +10,7 @@ RUN  apk add --no-cache python make g++ \
     && npm cache clean --force \
     && apk del python make g++
 
-COPY ./config.js ./config.json
+COPY ./config.js ./config.js
 
 CMD node . --mini-map-app-name="mini-map"
 
