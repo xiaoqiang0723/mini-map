@@ -13,7 +13,7 @@ RUN  apk add --no-cache python make g++ \
 
 COPY ./config.js ./config.js
 COPY ./index.js ./index.js
-COPY ./koa ./koa
+COPY ./src ./src
 COPY ./test ./test
 
 CMD node . --mini-map-app-name="mini-map"

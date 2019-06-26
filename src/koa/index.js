@@ -4,14 +4,15 @@ const koaqs = require('koa-qs')
 const Router = require('koa-router')
 const body = require('koa-body')
 const compress = require('koa-compress')
+const http = require('http')
 
-const config = require('../config.js')
+const config = require('../../config.js')
 
 const app = new Koa()
 const router = new Router()
 
 app.use(compress())
-app.use(body({ multipart: true, strict: false }))
+app.use(body({ multipart: true, parsedMethods: ['post', 'put', 'get', 'delete'] }))
 koaqs(app)
 
 function enableRouter() {
@@ -28,7 +29,8 @@ const DEFAULT_CONFIG = {
 const conf = _.extend(DEFAULT_CONFIG, config.web)
 const port = process.env.port || conf.port
 const host = process.env.host || conf.host
-app.listen(port, host, () => {
+
+http.createServer(app.callback()).listen(port, host, () => {
 	console.log('Start Http Server @ %s:%s', host, port)
 })
 
