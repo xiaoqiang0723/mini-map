@@ -6,6 +6,7 @@ const _ = require('lodash')
 const request = require('request-promise')
 const moment = require('moment')
 const uuid = require('uuid/v4')
+const crypto = require('crypto')
 
 const common = require('../common')
 const config = require('../../config')
@@ -38,6 +39,8 @@ const wxLoginOption = {
 async function login(ctx) {
 	const data = ctx.request.body
 
+	console.log('data', data)
+
 	const valid = ajv.compile(schemaWithLogin)
 
 	if (!valid(data)) {
@@ -69,8 +72,9 @@ async function login(ctx) {
 	const wxLoginOptionCopy = _.cloneDeep(wxLoginOption)
 	wxLoginOptionCopy.qs.js_code = data.code
 	console.log('wx login option >>>>> ', JSON.stringify(wxLoginOptionCopy))
-	const result = await request(wxLoginOptionCopy)
+	let result = await request(wxLoginOptionCopy)
 	console.log('wx login result <<<<< ', result)
+	result = JSON.parse(result)
 
 	if (!result) {
 		ctx.status = 400
@@ -78,7 +82,10 @@ async function login(ctx) {
 		return
 	}
 
-	const user = (await pool.queryAsync(squel.select().from('user').where('id = ?', result.open_id).toString()))[0]
+	const user = (await pool.queryAsync(squel.select().from('user').where('id = ?', result.openid).toString()))[0]
+
+	console.log('user', user)
+
 	if (!user && !data.phone && !data.authCode) {
 		ctx.status = 400
 		ctx.body = '请输入手机号和验证码'
@@ -92,6 +99,8 @@ async function login(ctx) {
 		ctx.body = '用户信息验证失败'
 		return
 	}
+
+	console.log('userData', userData)
 
 	if (!user) {
 		await pool.queryAsync(squel.insert().into('user').setFields({
@@ -134,6 +143,8 @@ async function login(ctx) {
 
 const smsoption = {
 	uri: config.ali.sms_url,
+	qs: {},
+	JSON: true,
 }
 
 const schemaGetAuthCode = {
@@ -144,14 +155,20 @@ const schemaGetAuthCode = {
 }
 
 function sign(signObj, secretKey) {
-	const urlStr = ''
-	const objLength = Object.keys(signObj)
-	if (objLength.length === 0) {
-		return
+	let qstring = []
+	const keys = Object.keys(signObj)
+	if (keys.length === 0) {
+		return 0
 	}
-	for (let i = 0; i < objLength; i += 1) {
-		urlStr = `&${encodeURIComponent()}`
+	for (let i = 0; i < keys.length; i += 1) {
+		qstring.push(`${encodeURIComponent(keys[i])}=${encodeURIComponent(signObj[keys[i]])}`)
 	}
+	qstring = _.join(qstring, '&').replace(/\+/g, '%20').replace(/\*/g, '%2A').replace(/%7E/g, '~')
+	// qstring = `GET&${encodeURIComponent('/')}&${qstring}`
+
+	console.log('qstring', `GET&${encodeURIComponent('/')}&${encodeURIComponent(qstring).replace(/\+/g, '%20').replace(/\*/g, '%2A').replace(/%7E/g, '~')}`)
+	const signs = crypto.createHmac('sha1', `${secretKey}&`).update(`GET&${encodeURIComponent('/')}&${encodeURIComponent(qstring).replace(/\+/g, '%20').replace(/\*/g, '%2A').replace(/%7E/g, '~')}`).digest().toString('base64')
+	return signs
 }
 
 async function get_auth_code(ctx) {
@@ -165,25 +182,94 @@ async function get_auth_code(ctx) {
 		return
 	}
 
-	const authCode = uuid().substr(0, 5)
+	const { ip } = ctx.request
+	let authCode = await common.redisClient.getAsync(`${ip}_${data.phone}_number`)
+	const has_punishment = await common.redisClient.getAsync(`${ip}_${data.phone}`)
+	if (has_punishment) {
+		return
+	}
+	let punishment_time = 0
+
+	if (Number(authCode) >= 10) {
+		punishment_time = 60 * 60 * 24
+		await common.redisClient.setAsync(`${ip}_${data.phone}_number`, '0')
+	} else if (Number(authCode) >= 3) {
+		punishment_time = 60 * 60
+	} else if (Number(authCode) >= 1) {
+		punishment_time = 60
+	}
+
+	if (Number(authCode) > 0) {
+		authCode = `${Number(authCode) + 1}`
+	} else {
+		authCode = 1
+	}
+
+	await common.redisClient.setAsync(`${ip}_${data.phone}_number`, `${authCode}`)
+	await common.redisClient.setAsync(`${ip}_${data.phone}`, 'true')
+	await common.redisClient.expireAsync(`${ip}_${data.phone}`, punishment_time)
+
+	authCode = uuid().substr(0, 6)
+	const signatureNonce = uuid()
+	const timestamp = `${moment(new Date().getTime() - 3600 * 1000 * 8).format('YYYY-MM-DDTHH:mm:ss')}Z`
 
 	const signObj = {
-		SignatureMethod: 'HMAC-SHA1',
-		SignatureNonce: uuid(),
 		AccessKeyId: config.ali.msg_accesskey_id,
-		SignatureVersion: '1.0',
-		Timestamp: `${moment(new Date().getTime() - 3600 * 1000 * 8).format('YYYY-MM-DDTHH:mm:ss')}Z`,
-		Format: 'json',
 		Action: 'SendSms',
-		Version: moment().format('YYYY-MM-DD'),
-		RegionId: 'cn-zhuhai',
+		Format: 'json',
 		PhoneNumbers: data.phone,
+		RegionId: 'cn-zhuhai',
 		SignName: '你知我知',
-		TemplateParam: `${JSON.stringify({ code: authCode })}`,
+		SignatureMethod: 'HMAC-SHA1',
+		SignatureNonce: signatureNonce,
+		SignatureVersion: '1.0',
 		TemplateCode: config.ali.sms_code,
+		TemplateParam: `${JSON.stringify({ code: authCode })}`,
+		Timestamp: timestamp,
+		Version: '2017-05-25',
 	}
+
+	const signStr = sign(signObj, config.ali.mag_accesskey_secret)
+
+	console.log('signStr', signStr)
+
+	const smsoptionCopy = _.cloneDeep(smsoption)
+	smsoptionCopy.qs.Signature = signStr
+	smsoptionCopy.qs.AccessKeyId = signObj.AccessKeyId
+	smsoptionCopy.qs.Action = signObj.Action
+	smsoptionCopy.qs.Format = signObj.Format
+	smsoptionCopy.qs.PhoneNumbers = signObj.PhoneNumbers
+	smsoptionCopy.qs.RegionId = signObj.RegionId
+	smsoptionCopy.qs.SignName = signObj.SignName
+	smsoptionCopy.qs.SignatureMethod = signObj.SignatureMethod
+	smsoptionCopy.qs.SignatureNonce = signObj.SignatureNonce
+	smsoptionCopy.qs.SignatureVersion = signObj.SignatureVersion
+	smsoptionCopy.qs.TemplateCode = signObj.TemplateCode
+	smsoptionCopy.qs.TemplateParam = signObj.TemplateParam
+	smsoptionCopy.qs.Timestamp = signObj.Timestamp
+	smsoptionCopy.qs.Version = signObj.Version
+
+	console.log('request aliyun sms >>>>>>>', JSON.stringify(smsoptionCopy))
+	let result = await request(smsoptionCopy)
+	console.log('request aliyun sms <<<<<<<', result)
+
+	console.log('result', result)
+
+	result = JSON.parse(result)
+
+	if (result.Code !== 'OK') {
+		ctx.status = 500
+		ctx.body = '系统繁忙,请稍后再试'
+		return
+	}
+
+	await common.redisClient.setAsync(`get_phone_code_${data.phone}`, authCode)
+	await common.redisClient.expireAsync(`get_phone_code_${data.phone}`, 10 * 60)
+
+	ctx.status = 200
+	ctx.body = 'success'
 }
 
 module.exports = {
-	login,
+	login, get_auth_code,
 }
