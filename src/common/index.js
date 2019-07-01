@@ -2,12 +2,17 @@
 const crypto = require('crypto')
 const redis = require('redis')
 const bluebird = require('bluebird')
+const mysql = require('mysql')
+const _ = require('lodash')
 
 const { router, app } = require('../koa')
 const config = require('../../config')
 
 const redisClient = redis.createClient(config.redis)
 bluebird.promisifyAll(redisClient)
+
+const pool = mysql.createPool(_.extend(config.mysql, { multipleStatements: true }))
+bluebird.promisifyAll(pool)
 
 redisClient.on('error', (e) => {
 	console.error('[Parking-terminal New-Protocol redis error]', e)
@@ -50,5 +55,5 @@ function register(path, requestMethod, method, option = {}) {
 	router.register(path, requestMethod, method)
 }
 module.exports = {
-	register, methods, router, getSessionId, redisClient, refreshSession,
+	register, methods, router, getSessionId, redisClient, refreshSession, pool,
 }

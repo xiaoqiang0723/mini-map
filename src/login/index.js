@@ -1,6 +1,4 @@
 const ajv = require('ajv')({ useDefaults: true })
-const mysql = require('mysql')
-const bluebird = require('bluebird')
 const squel = require('squel')
 const _ = require('lodash')
 const request = require('request-promise')
@@ -12,14 +10,11 @@ const common = require('../common')
 const config = require('../../config')
 const WXBizDataCrypt = require('./lib/WXBizDataCrypt')
 
-const pool = mysql.createPool(_.extend(config.mysql, { multipleStatements: true }))
-bluebird.promisifyAll(pool)
-
 const schemaWithLogin = {
 	properties: {
-		code: { type: 'string' },
-		encryptedData: { type: 'string' },
-		iv: { type: 'string' },
+		code: { type: 'string', minLength: 1 },
+		encryptedData: { type: 'string', minLength: 1 },
+		iv: { type: 'string', minLength: 1 },
 		phone: { type: 'string' },
 		authCode: { type: 'string' },
 	},
@@ -76,13 +71,13 @@ async function login(ctx) {
 	console.log('wx login result <<<<< ', result)
 	result = JSON.parse(result)
 
-	if (!result) {
+	if (!result.openid) {
 		ctx.status = 400
 		ctx.body = '系统繁忙,请稍后再试'
 		return
 	}
 
-	const user = (await pool.queryAsync(squel.select().from('user').where('id = ?', result.openid).toString()))[0]
+	const user = (await common.pool.queryAsync(squel.select().from('user').where('id = ?', result.openid).toString()))[0]
 
 	console.log('user', user)
 
@@ -103,7 +98,7 @@ async function login(ctx) {
 	console.log('userData', userData)
 
 	if (!user) {
-		await pool.queryAsync(squel.insert().into('user').setFields({
+		await common.pool.queryAsync(squel.insert().into('user').setFields({
 			id: userData.openId,
 			phone: data.phone,
 			nick_name: userData.nickName || '',
@@ -127,7 +122,7 @@ async function login(ctx) {
 		if (userData.province) {
 			sql.set('province', userData.province)
 		}
-		await pool.queryAsync(sql.toString())
+		await common.pool.queryAsync(sql.toString())
 	}
 
 	const sessionId = common.getSessionId(userData.openId)
@@ -183,33 +178,23 @@ async function get_auth_code(ctx) {
 	}
 
 	const { ip } = ctx.request
-	let authCode = await common.redisClient.getAsync(`${ip}_${data.phone}_number`)
-	const has_punishment = await common.redisClient.getAsync(`${ip}_${data.phone}`)
-	if (has_punishment) {
+	let punishment_time = await common.redisClient.getAsync(`${ip}_${data.phone}_number`)
+	if (punishment_time > 10) {
+		await common.redisClient.expireAsync(`${ip}_${data.phone}_number`, moment().endOf('day').unix() - moment(Date.now()).unix())
+		ctx.status = 400
+		ctx.body = '请求次数频繁,请稍后再试'
 		return
 	}
-	let punishment_time = 0
 
-	if (Number(authCode) >= 10) {
-		punishment_time = 60 * 60 * 24
-		await common.redisClient.setAsync(`${ip}_${data.phone}_number`, '0')
-	} else if (Number(authCode) >= 3) {
-		punishment_time = 60 * 60
-	} else if (Number(authCode) >= 1) {
-		punishment_time = 60
-	}
-
-	if (Number(authCode) > 0) {
-		authCode = `${Number(authCode) + 1}`
+	if (Number(punishment_time) > 0) {
+		punishment_time = `${Number(punishment_time) + 1}`
 	} else {
-		authCode = 1
+		punishment_time = 1
 	}
 
-	await common.redisClient.setAsync(`${ip}_${data.phone}_number`, `${authCode}`)
-	await common.redisClient.setAsync(`${ip}_${data.phone}`, 'true')
-	await common.redisClient.expireAsync(`${ip}_${data.phone}`, punishment_time)
+	await common.redisClient.setAsync(`${ip}_${data.phone}_number`, `${punishment_time}`)
 
-	authCode = uuid().substr(0, 6)
+	const authCode = uuid().substr(0, 6)
 	const signatureNonce = uuid()
 	const timestamp = `${moment(new Date().getTime() - 3600 * 1000 * 8).format('YYYY-MM-DDTHH:mm:ss')}Z`
 
