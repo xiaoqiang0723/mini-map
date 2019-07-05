@@ -107,6 +107,7 @@ async function login(ctx) {
 			province: userData.province || '',
 			avatar_url: userData.avatarUrl || '',
 			union_id: userData.unionId,
+			create_time: moment().unix(),
 		}).toString())
 	} else {
 		const sql = squel.update().table('user')
