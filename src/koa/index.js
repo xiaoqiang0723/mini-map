@@ -12,7 +12,7 @@ const app = new Koa()
 const router = new Router()
 
 app.use(compress())
-app.use(body({ multipart: true, parsedMethods: ['post', 'put', 'get', 'delete'] }))
+app.use(body({ multipart: true, parsedMethods: ['post', 'put', 'get', 'delete'], formidable: { maxFileSize: 400 * 1024 * 1024, maxFields: 10, maxFieldsSize: 4000 * 1024 * 1024 } }))
 koaqs(app)
 
 function enableRouter() {

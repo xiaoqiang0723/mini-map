@@ -5,7 +5,7 @@ const bluebird = require('bluebird')
 const mysql = require('mysql')
 const _ = require('lodash')
 
-const { router, app } = require('../koa')
+const { router } = require('../koa')
 const config = require('../../config')
 
 const redisClient = redis.createClient(config.redis)
@@ -30,18 +30,26 @@ function getSessionId(openId) {
 	return hash.update(openId).digest('base64')
 }
 
+async function getUserId(sessionid) {
+	const userDataStr = await redisClient.getAsync(sessionid)
+	return JSON.parse(userDataStr).openId
+}
+
 async function refreshSession(sessionid) {
 	await redisClient.expireAsync(sessionid, 60 * 60 * 2)
 }
 
 async function checkoutSession(ctx, next) {
 	const { sessionid } = ctx.request.header
-	const userStr = await redisClient.getAsync(sessionid)
-	if (!userStr) {
+
+	const has_key = await redisClient.existsAsync(sessionid)
+
+	if (!has_key) {
 		ctx.status = 201
 		ctx.body = '登录过期'
 		return
 	}
+
 	await refreshSession(sessionid)
 
 	await next()
@@ -49,11 +57,14 @@ async function checkoutSession(ctx, next) {
 
 function register(path, requestMethod, method, option = {}) {
 	const { ignoreLogin } = option
+	// if (!ignoreLogin) {
+	// 	app.use(checkoutSession)
+	// }
 	if (!ignoreLogin) {
-		app.use(checkoutSession)
+		router.register(path, requestMethod, checkoutSession, method)
 	}
 	router.register(path, requestMethod, method)
 }
 module.exports = {
-	register, methods, router, getSessionId, redisClient, refreshSession, pool,
+	register, methods, router, getSessionId, redisClient, refreshSession, pool, getUserId,
 }

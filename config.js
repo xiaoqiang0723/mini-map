@@ -20,9 +20,8 @@ module.exports = {
 	},
 	ali: {
 		msg_accesskey_id: process.env.MSG_ACCESSKEY_ID || 'LTAIMNMBmn9rzQ59',
-		mag_accesskey_secret: process.env.MSG_ACCESSKEY_SECRET || 'YS1dP30FCmsqGiRJRe7rwe62TxAUEC',
+		msg_accesskey_secret: process.env.MSG_ACCESSKEY_SECRET || 'YS1dP30FCmsqGiRJRe7rwe62TxAUEC',
 		sms_url: 'https://dysmsapi.aliyuncs.com/',
 		sms_code: process.env.SMS_CODE || 'SMS_169111430',
-
 	},
 }

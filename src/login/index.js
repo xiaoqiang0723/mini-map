@@ -194,7 +194,7 @@ async function get_auth_code(ctx) {
 
 	await common.redisClient.setAsync(`${ip}_${data.phone}_number`, `${punishment_time}`)
 
-	const authCode = uuid().substr(0, 6)
+	const authCode = uuid().replace(/-/g, '').substr(0, 6)
 	const signatureNonce = uuid()
 	const timestamp = `${moment(new Date().getTime() - 3600 * 1000 * 8).format('YYYY-MM-DDTHH:mm:ss')}Z`
 
@@ -214,7 +214,7 @@ async function get_auth_code(ctx) {
 		Version: '2017-05-25',
 	}
 
-	const signStr = sign(signObj, config.ali.mag_accesskey_secret)
+	const signStr = sign(signObj, config.ali.msg_accesskey_secret)
 
 	console.log('signStr', signStr)
 

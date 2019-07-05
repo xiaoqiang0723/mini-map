@@ -23,7 +23,9 @@
   "homepage": "https://github.com/xiaoqiang0723/mini-map#readme",
   "dependencies": {
     "ajv": "^6.5.1",
+    "ali-oss": "^6.1.1",
     "bluebird": "^3.5.5",
+    "gm": "^1.23.1",
     "koa": "^2.7.0",
     "koa-body": "^4.1.0",
     "koa-compress": "^3.0.0",
