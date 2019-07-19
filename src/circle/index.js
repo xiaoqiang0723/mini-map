@@ -156,8 +156,10 @@ async function circle(ctx) {
 
 			await connon.beginTransactionAsync()
 
-			await common.pool.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
-			await common.pool.queryAsync(squel.delete().from('circle_user').where('circle_id = ?', data.circleId).toString())
+			await connon.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
+			await connon.queryAsync(squel.delete().from('circle_user').where('circle_id = ?', data.circleId).toString())
+
+			await connon.commitAsync()
 		} catch (e) {
 			if (connon) {
 				await connon.rollbackAsync()
@@ -234,7 +236,7 @@ const schemaCircleQuit = {
 		circleId: { type: 'string' },
 		quitUserId: { type: 'string' },
 	},
-	required: ['circleId', 'quitUserId'],
+	required: ['circleId'],
 }
 
 async function circle_quit(ctx) {
@@ -252,11 +254,20 @@ async function circle_quit(ctx) {
 
 	const userId = await common.getUserId(sessionid)
 
-	if (userId === data.quitUserId) {
-		await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', data.quitUserId))
-	} else {
+	if (data.quitUserId) {
+		const userIsCircler = (await common.pool.queryAsync(squel.select().from('circle_user').where('circle_id = ?', data.circleId).where('user_id = ?', userId)
+			.where('is_owner = ?', 1)
+			.toString()))[0]
+
+		if (!userIsCircler) {
+			ctx.status = 400
+			ctx.body = '您没有删除圈子成员的权限'
+			return
+		}
 		await common.pool.queryAsync(squel.update().table('circle_user').set('is_kick_out', 1).where('user_id = ?', data.quitUserId))
 	}
+
+	await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId))
 
 	ctx.status = 200
 	ctx.body = 'success'

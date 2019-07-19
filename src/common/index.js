@@ -52,7 +52,12 @@ async function checkoutSession(ctx, next) {
 
 	await refreshSession(sessionid)
 
-	await next()
+	try {
+		await next()
+	} catch (e) {
+		ctx.status = 500
+		ctx.body = '系统繁忙，请稍后再试'
+	}
 }
 
 function register(path, requestMethod, method, option = {}) {
