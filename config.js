@@ -1,6 +1,6 @@
 module.exports = {
 	web: {
-		port: 80,
+		port: 443,
 	},
 	mysql: {
 		host: process.env.MYSQL_HOST || 'localhost',

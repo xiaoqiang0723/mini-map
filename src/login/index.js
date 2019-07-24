@@ -39,8 +39,10 @@ async function login(ctx) {
 	const valid = ajv.compile(schemaWithLogin)
 
 	if (!valid(data)) {
-		ctx.status = 400
-		ctx.body = '参数错误'
+		ctx.body = {
+			statusCode: 400,
+			message: '参数错误',
+		}
 		return
 	}
 

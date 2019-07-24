@@ -53,6 +53,7 @@ async function checkoutSession(ctx, next) {
 	await refreshSession(sessionid)
 
 	try {
+		ctx.status = 200
 		await next()
 	} catch (e) {
 		ctx.status = 500

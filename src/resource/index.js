@@ -24,6 +24,13 @@ const schemaResource = {
 	required: ['circleId', 'resrouceName', 'lat', 'lng'],
 }
 
+const schemaResourceGet = {
+	properties: {
+		resourceId: { type: 'string' },
+	},
+	required: ['resourceId'],
+}
+
 const schemaResourcePut = {
 	properties: {
 		resourceId: { type: 'string' },
@@ -79,7 +86,7 @@ async function reflushCount(circleId) {
 
 	if (!reflushCountWithCircleId) {
 		await common.redisClient.setAsync(`${circleId}_reflush`, '1')
-		await common.redisClient.expireAsync(`${moment().endOf('day').unix() - moment(Date.now()).unix()}`)
+		await common.redisClient.expireAsync(`${circleId}_reflush`, `${moment().endOf('day').unix() - moment(Date.now()).unix()}`)
 		return
 	}
 	await common.redisClient.incrbyAsync(`${circleId}_reflush`, 1)
@@ -89,10 +96,26 @@ async function resource(ctx) {
 	const { method } = ctx.request
 
 	if (method === 'GET') {
-		console.log('1111')
 		const data = ctx.query
 
+		const valid = ajv.compile(schemaResourceGet)
+
+		if (!valid(data)) {
+			ctx.status = 400
+			ctx.body = '参数错误'
+			return
+		}
+
 		console.log('data', data)
+
+		const resourceWithId = (await common.queryAsync(squel.select().from('resource').where('id = ?', data.resourceId).toString()))[0] || {}
+
+		const imgs = await common.queryAsync(squel.select().from('resource_pic').field('pic_url').where('resource_id = ?', data.resourceId)) || []
+
+		resourceWithId.imgs = imgs
+
+		ctx.status = 200
+		ctx.body = resourceWithId
 	} else if (method === 'POST') {
 		console.log('22222')
 		const data = ctx.request.body
@@ -334,7 +357,118 @@ async function resource(ctx) {
 	}
 }
 
+const schemaResourceList = {
+	properties: {
+		circleId: { type: 'string' },
+		lat: { type: 'number' },
+		lng: { type: 'number' },
+		isFlush: { type: 'number' },
+	},
+	required: ['circleId', 'lat', 'lng', 'isFlush'],
+}
+
+async function resource_list(ctx) {
+	const { method } = ctx.request
+
+	if (method === 'POST') {
+		const data = ctx.request.body
+
+		const valid = ajv.compile(schemaResourceList)
+
+		if (!valid(data)) {
+			ctx.status = 400
+			ctx.body = '参数错误'
+			return
+		}
+		console.log('111')
+
+		const { sessionid } = ctx.request.header
+
+		const userId = await common.getUserId(sessionid)
+
+		const flushCount = await common.redisClient.getAsync(`${userId}_flushCount`) || 0
+
+		if (Number(flushCount) >= 3) {
+			ctx.status = 400
+			ctx.body = '您已经刷新超过3次了'
+			return
+		}
+
+		const has_show_resourceStr = await common.redisClient.getAsync(`${userId}_has_show_resources`)
+
+		let has_show_resourceList = []
+
+		if (has_show_resourceStr) {
+			has_show_resourceList = JSON.parse(has_show_resourceStr)
+		}
+
+		if (has_show_resourceList.length >= 10 && !data.isFlush) {
+			ctx.status = 200
+			ctx.body = _.drop(has_show_resourceList, has_show_resourceList.length - 10)
+			return
+		}
+
+		const resources = await common.pool.queryAsync(squel.select().from('resnource').where('circle_id = ?', data.circleId).order('id', false)
+			.toString())
+
+		const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(v.lat - data.lat) <= 10) && (Math.abs(v.lng - data.lng) <= 10)), has_show_resourceList, 'id')
+
+		let returnList = []
+
+		if (resourcesWithNear.length >= 10) {
+			returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
+		} else {
+			returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
+		}
+
+		has_show_resourceList = _.concat(has_show_resourceList, returnList)
+
+		await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
+		await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
+
+		ctx.status = 200
+		ctx.body = returnList
+	}
+
+	ctx.status = 404
+	ctx.body = 'NOT FOUND'
+}
+
+const schemaCircleWithUserJoin = {
+	properties: {
+		resourceUserId: { type: 'string' },
+	},
+	required: ['resourceUserId'],
+}
+
+async function circle_with_user_join(ctx) {
+	const { method } = ctx.request
+
+	if (method === 'GET') {
+		const data = ctx.query
+
+		const valid = ajv.compile(schemaCircleWithUserJoin)
+
+		if (!valid(data)) {
+			ctx.status = 400
+			ctx.body = '参数错误'
+			return
+		}
+
+		const circlesWithResourceUser = await common.pool.queryAsync(squel.select().from('circle', 'a').join('circle_user', 'b', 'a.id = b.circle_id').field('a.*')
+			.where('b.user_id = ?', data.resourceUserId)
+			.where('b.is_owner = ?', 0)
+			.where('b.is_kick_out = ?', 0)
+			.toString())
+
+		ctx.body = circlesWithResourceUser || []
+		ctx.status = 200
+	}
+
+	ctx.status = 404
+	ctx.body = 'NOT FOUND'
+}
 
 module.exports = {
-	resource,
+	resource, resource_list, circle_with_user_join,
 }
