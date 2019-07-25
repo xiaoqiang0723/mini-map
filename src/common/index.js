@@ -11,7 +11,7 @@ const config = require('../../config')
 const redisClient = redis.createClient(config.redis)
 bluebird.promisifyAll(redisClient)
 
-const pool = mysql.createPool(_.extend(config.mysql, { multipleStatements: true }))
+const pool = mysql.createPool(_.extend(config.mysql, { multipleStatements: true, charset: 'UTF8MB4_BIN' }))
 bluebird.promisifyAll(pool)
 
 redisClient.on('error', (e) => {
@@ -40,24 +40,33 @@ async function refreshSession(sessionid) {
 }
 
 async function checkoutSession(ctx, next) {
-	const { sessionid } = ctx.request.header
+	const { sessionid } = ctx.request.header || ''
+
+	ctx.status = 200
 
 	const has_key = await redisClient.existsAsync(sessionid)
 
 	if (!has_key) {
-		ctx.status = 201
-		ctx.body = '登录过期'
+		ctx.body = {
+			status: 201,
+			message: '登录过期',
+			data: { },
+		}
 		return
 	}
 
 	await refreshSession(sessionid)
 
 	try {
-		ctx.status = 200
+		console.log(`[mini-map request parameter ] ${ctx.request.ip} ${ctx.request.path} ${ctx.request.method} %j`, ctx.request.method === 'GET' ? JSON.stringify(ctx.query) : JSON.stringify(ctx.request.body))
 		await next()
 	} catch (e) {
-		ctx.status = 500
-		ctx.body = '系统繁忙，请稍后再试'
+		console.log('err', e.stack)
+		ctx.body = {
+			status: 500,
+			message: '系统繁忙，请稍后再试',
+			data: {},
+		}
 	}
 }
 

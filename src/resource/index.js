@@ -20,6 +20,8 @@ const schemaResource = {
 		fenshiqun: { type: 'string' },
 		douyin: { type: 'string' },
 		remark: { type: 'string' },
+		address: { type: 'string' },
+		addressName: { type: 'string' },
 	},
 	required: ['circleId', 'resrouceName', 'lat', 'lng'],
 }
@@ -101,8 +103,11 @@ async function resource(ctx) {
 		const valid = ajv.compile(schemaResourceGet)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -114,8 +119,11 @@ async function resource(ctx) {
 
 		resourceWithId.imgs = imgs
 
-		ctx.status = 200
-		ctx.body = resourceWithId
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: resourceWithId,
+		}
 	} else if (method === 'POST') {
 		console.log('22222')
 		const data = ctx.request.body
@@ -127,8 +135,11 @@ async function resource(ctx) {
 		const valid = ajv.compile(schemaResource)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -140,24 +151,33 @@ async function resource(ctx) {
 			.toString()))[0]
 
 		if (userHasAddWithToday) {
-			ctx.status = 400
-			ctx.body = '亲，今天您已经添加过资源了，请改天再试试吧'
+			ctx.body = {
+				status: 400,
+				message: '亲，今天您已经添加过资源了，请改天再试试吧',
+				data: {},
+			}
 			return
 		}
 
 		const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).toString())
 
 		if (resources.length >= 100) {
-			ctx.status = 400
-			ctx.body = '该圈子可添加的资源数量已到达上限!'
+			ctx.body = {
+				status: 400,
+				message: '该圈子可添加的资源数量已到达上限!',
+				data: {},
+			}
 			return
 		}
 
 		const resourcesWithToday = _.filter(resources, v => v.create_time > moment().startOf('day').unix())
 
 		if (resourcesWithToday.length >= 3) {
-			ctx.status = 400
-			ctx.body = '该圈子今天添加的资源数已超过限制，请改天再试试吧'
+			ctx.body = {
+				status: 400,
+				message: '该圈子今天添加的资源数已超过限制，请改天再试试吧',
+				data: {},
+			}
 			return
 		}
 
@@ -192,6 +212,12 @@ async function resource(ctx) {
 		if (data.remark) {
 			sql.set('remark', data.remark)
 		}
+		if (data.address) {
+			sql.set('address', data.address)
+		}
+		if (data.addressName) {
+			sql.set('address_name', data.addressName)
+		}
 
 		await common.pool.queryAsync(sql.toString())
 
@@ -206,8 +232,11 @@ async function resource(ctx) {
 		}
 		await reflushCount(data.circleId)
 
-		ctx.status = 200
-		ctx.body = 'success'
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: {},
+		}
 	} else if (method === 'PUT') {
 		console.log('33333')
 		const data = ctx.request.body
@@ -215,8 +244,11 @@ async function resource(ctx) {
 		const valid = ajv.compile(schemaResourcePut)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 		console.log('1111')
@@ -229,14 +261,20 @@ async function resource(ctx) {
 			.toString()))[0]
 
 		if (!resourceWithId) {
-			ctx.status = 400
-			ctx.body = '该资源不存在'
+			ctx.body = {
+				status: 400,
+				message: '该资源不存在',
+				data: {},
+			}
 			return
 		}
 
 		if (resourceWithId.user_id !== userId) {
-			ctx.status = 400
-			ctx.body = '您无权限编辑该资源'
+			ctx.body = {
+				status: 400,
+				message: '您无权限编辑该资源',
+				data: {},
+			}
 			return
 		}
 
@@ -310,6 +348,12 @@ async function resource(ctx) {
 				connon.release()
 			}
 		}
+
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: {},
+		}
 	} else if (method === 'DELETE') {
 		console.log('4444444444')
 
@@ -318,8 +362,11 @@ async function resource(ctx) {
 		const valid = ajv.compile(schemaResourceDelete)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -330,30 +377,37 @@ async function resource(ctx) {
 		const resourceWithId = (await common.pool.queryAsync(squel.select().from('resource').where('id = ?', data.resourceId).toString()))[0]
 
 		if (!resourceWithId) {
-			ctx.status = 400
-			ctx.body = '该资源不存在!'
+			ctx.body = {
+				status: 400,
+				message: '该资源不存在!',
+				data: {},
+			}
 			return
 		}
 		if (userId !== resourceWithId.user_id) {
 			const circle = (await common.pool.queryAsync('circle').where('id = ?', resourceWithId.circle_id).toString())[0]
 
-			ctx.status = 400
+			ctx.body = {
+				status: 400,
+				message: '',
+				data: {},
+			}
 
 			if (!circle) {
-				ctx.body = '该圈子已解散!'
+				ctx.body.message = '该圈子已解散!'
 				return
 			}
 
 			if (userId !== circle.user_id) {
-				ctx.body = '您没有权限删除该资源!'
+				ctx.body.message = '您没有权限删除该资源!'
 				return
 			}
 		}
 
 		await common.pool.queryAsync(squel.delete().from('resource').where('id = ?', data.resourceId).toString())
 
-		ctx.status = 200
-		ctx.body = 'success'
+		ctx.body.status = 200
+		ctx.body.message = 'success'
 	}
 }
 
@@ -376,8 +430,11 @@ async function resource_list(ctx) {
 		const valid = ajv.compile(schemaResourceList)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 		console.log('111')
@@ -389,8 +446,11 @@ async function resource_list(ctx) {
 		const flushCount = await common.redisClient.getAsync(`${userId}_flushCount`) || 0
 
 		if (Number(flushCount) >= 3) {
-			ctx.status = 400
-			ctx.body = '您已经刷新超过3次了'
+			ctx.body = {
+				status: 400,
+				message: '您已经刷新超过3次了',
+				data: {},
+			}
 			return
 		}
 
@@ -408,7 +468,7 @@ async function resource_list(ctx) {
 			return
 		}
 
-		const resources = await common.pool.queryAsync(squel.select().from('resnource').where('circle_id = ?', data.circleId).order('id', false)
+		const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
 			.toString())
 
 		const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(v.lat - data.lat) <= 10) && (Math.abs(v.lng - data.lng) <= 10)), has_show_resourceList, 'id')
@@ -425,9 +485,16 @@ async function resource_list(ctx) {
 
 		await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
 		await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
+		await common.redisClient.delAsync(`${userId}_collect`)
+		await common.redisClient.setAsync(`${userId}_last_join_circle`, `${data.circleId}`)
 
-		ctx.status = 200
-		ctx.body = returnList
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: returnList,
+		}
+
+		return
 	}
 
 	ctx.status = 404
@@ -450,8 +517,11 @@ async function circle_with_user_join(ctx) {
 		const valid = ajv.compile(schemaCircleWithUserJoin)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -463,12 +533,65 @@ async function circle_with_user_join(ctx) {
 
 		ctx.body = circlesWithResourceUser || []
 		ctx.status = 200
+
+		return
 	}
 
 	ctx.status = 404
 	ctx.body = 'NOT FOUND'
 }
 
+const schemaCollect = {
+	properties: {
+		resourceId: { type: 'string' },
+	},
+	required: ['resourceId'],
+}
+
+async function resource_collect(ctx) {
+	const data = ctx.request.body
+
+	const valid = ajv.compile(schemaCollect)
+
+	if (!valid(data)) {
+		ctx.body = {
+			status: 400,
+			message: '参数错误',
+			data: {},
+		}
+		return
+	}
+
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const user_has_collect = await common.redisClient.getAsync(`${userId}_collect`)
+	await common.redisClient.expireAsync(60 * 60)
+
+	if (user_has_collect) {
+		ctx.body = {
+			status: 400,
+			message: '请刷新后再点击收藏',
+			data: {},
+		}
+		return
+	}
+
+	await common.pool.queryAsync(squel.insert().into('user_collect').setFields({
+		id: uuid().replace(/-/g, ''),
+		resource_id: data.resourceId,
+		user_id: userId,
+		create_time: moment().unix(),
+	}))
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {},
+	}
+}
+
 module.exports = {
-	resource, resource_list, circle_with_user_join,
+	resource, resource_list, circle_with_user_join, resource_collect,
 }

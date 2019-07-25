@@ -30,6 +30,13 @@ const schemaCircleDelete = {
 	required: ['circleId'],
 }
 
+const schemaCircleGet = {
+	properties: {
+		circleId: { type: 'string' },
+	},
+	required: ['circleId'],
+}
+
 async function circle(ctx) {
 	const { method } = ctx.request
 
@@ -37,14 +44,38 @@ async function circle(ctx) {
 
 	if (method === 'GET') {
 		console.log('1111')
+
+		const data = ctx.query
+
+		const valid = ajv.compile(schemaCircleGet)
+
+		if (!valid(data)) {
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
+			return
+		}
+
+		const circleWithId = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', data.circleId)))[0]
+
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: circleWithId || {},
+		}
 	} else if (method === 'POST') {
 		const data = ctx.request.body
 
 		const valid = ajv.compile(schemaCircle_create)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -55,14 +86,20 @@ async function circle(ctx) {
 		const circleList = await common.pool.queryAsync(squel.select().from('circle').where('user_id = ?', userId).toString())
 
 		if (circleList.length >= 3) {
-			ctx.status = 400
-			ctx.body = '您创建的圈子已超过最大限制'
+			ctx.body = {
+				status: 400,
+				message: '您创建的圈子已超过最大限制',
+				data: {},
+			}
 			return
 		}
 
 		const circleNumber = uuidV1(null, Array.from(10), 0).join('')
 
 		const circleId = uuidV4().replace(/-/g, '')
+
+		const userHasCircles = await common.pool.queryAsync(squel.select().from('circle_user').where('user_id = ?', userId).toString())
+		console.log('userHasCircles', userHasCircles)
 
 		await common.pool.queryAsync(squel.insert().into('circle').setFields({
 			id: circleId,
@@ -79,8 +116,18 @@ async function circle(ctx) {
 			create_time: moment().unix(),
 		}).toString())
 
-		ctx.status = 200
-		ctx.body = 'success'
+		if (!userHasCircles || userHasCircles.length === 0) {
+			console.log('11111111111111')
+			await common.redisClient.setAsync(`${userId}_last_join_circle`, `${circleId}`)
+		}
+
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: {
+				circleId,
+			},
+		}
 	} else if (method === 'PUT') {
 		// const data = ctx.request.body
 		console.log('111')
@@ -89,8 +136,11 @@ async function circle(ctx) {
 		const valid = ajv.compile(schemaCirclePut)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -102,8 +152,11 @@ async function circle(ctx) {
 			.toString())[0]
 
 		if (!user_has_circle) {
-			ctx.status = 400
-			ctx.body = '您不是圈主,无权限修改'
+			ctx.body = {
+				status: 400,
+				message: '您不是圈主,无权限修改',
+				data: {},
+			}
 			return
 		}
 
@@ -121,8 +174,11 @@ async function circle(ctx) {
 
 		await common.pool.queryAsync(sqlStr.toString())
 
-		ctx.status = 200
-		ctx.body = 'success'
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: {},
+		}
 	} else if (method === 'DELETE') {
 		console.log('2222')
 
@@ -131,8 +187,11 @@ async function circle(ctx) {
 		const valid = ajv.compile(schemaCircleDelete)
 
 		if (!valid(data)) {
-			ctx.status = 400
-			ctx.body = '参数错误'
+			ctx.body = {
+				status: 400,
+				message: '参数错误',
+				data: {},
+			}
 			return
 		}
 
@@ -144,8 +203,11 @@ async function circle(ctx) {
 			.toString())[0]
 
 		if (!user_has_circle) {
-			ctx.status = 400
-			ctx.body = '您不是圈主,无权限删除'
+			ctx.body = {
+				status: 400,
+				message: '您不是圈主,无权限删除',
+				data: {},
+			}
 			return
 		}
 
@@ -169,8 +231,12 @@ async function circle(ctx) {
 				connon.release()
 			}
 		}
-		ctx.status = 200
-		ctx.body = 'success'
+
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: {},
+		}
 	}
 }
 
@@ -187,8 +253,11 @@ async function circle_join(ctx) {
 	const valid = ajv.compile(schemaCircleJoin)
 
 	if (!valid(data)) {
-		ctx.status = 400
-		ctx.body = '参数错误'
+		ctx.body = {
+			status: 400,
+			message: '参数错误',
+			data: {},
+		}
 		return
 	}
 
@@ -203,12 +272,18 @@ async function circle_join(ctx) {
 
 	if (userHasKickout) {
 		if (userHasKickout.is_kick_out) {
-			ctx.status = 400
-			ctx.body = '您已经被该圈主删除，不可进入'
+			ctx.body = {
+				status: 400,
+				message: '您已经被该圈主删除，不可进入',
+				data: {},
+			}
 			return
 		}
-		ctx.status = 400
-		ctx.body = '您已加过该圈子，不可重复进入'
+		ctx.body = {
+			status: 400,
+			message: '您已加过该圈子，不可重复进入',
+			data: {},
+		}
 		return
 	}
 
@@ -216,8 +291,11 @@ async function circle_join(ctx) {
 		.toString())
 
 	if (userHasCircles.length >= 10) {
-		ctx.status = 400
-		ctx.body = '您加入的圈子数量已超过最大限制'
+		ctx.body = {
+			status: 400,
+			message: '您加入的圈子数量已超过最大限制',
+			data: {},
+		}
 		return
 	}
 
@@ -227,8 +305,11 @@ async function circle_join(ctx) {
 		create_time: moment().unix(),
 	}).toString())
 
-	ctx.status = 200
-	ctx.body = 'success'
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {},
+	}
 }
 
 const schemaCircleQuit = {
@@ -245,8 +326,11 @@ async function circle_quit(ctx) {
 	const valid = ajv.compile(schemaCircleQuit)
 
 	if (!valid(data)) {
-		ctx.status = 400
-		ctx.body = '参数错误'
+		ctx.body = {
+			status: 400,
+			message: '参数错误',
+			data: {},
+		}
 		return
 	}
 
@@ -260,8 +344,11 @@ async function circle_quit(ctx) {
 			.toString()))[0]
 
 		if (!userIsCircler) {
-			ctx.status = 400
-			ctx.body = '您没有删除圈子成员的权限'
+			ctx.body = {
+				status: 400,
+				message: '您没有删除圈子成员的权限',
+				data: {},
+			}
 			return
 		}
 		await common.pool.queryAsync(squel.update().table('circle_user').set('is_kick_out', 1).where('user_id = ?', data.quitUserId))
@@ -269,10 +356,38 @@ async function circle_quit(ctx) {
 
 	await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId))
 
-	ctx.status = 200
-	ctx.body = 'success'
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {},
+	}
+}
+
+async function circle_list(ctx) {
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const circleWithUserJoin = await common.pool.queryAsync(squel.select().from('circle', 'a').join('circle_user', 'b', 'a.id = b.circle_id').field('a.*')
+		.where('b.user_id = ?', userId)
+		.where('is_owner = ?', 0)
+		.where('is_kick_out = ?', 0))
+	const circleWithUserCreate = await common.pool.queryAsync(squel.select().from('circle', 'a').join('circle_user', 'b', 'a.id = b.circle_id').field('a.*')
+		.where('b.user_id = ?', userId)
+		.where('is_owner = ?', 1))
+	const circleWithUserCollect = await common.pool.query(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id'))
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {
+			circleWithUserJoin,
+			circleWithUserCreate,
+			circleWithUserCollect,
+		},
+	}
 }
 
 module.exports = {
-	circle, circle_join, circle_quit,
+	circle, circle_join, circle_quit, circle_list,
 }

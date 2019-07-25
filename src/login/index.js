@@ -42,27 +42,37 @@ async function login(ctx) {
 		ctx.body = {
 			statusCode: 400,
 			message: '参数错误',
+			data: {},
 		}
 		return
 	}
 
 	if (!data.phone && data.authCode) {
-		ctx.status = 400
-		ctx.body = '请输入手机号码'
+		ctx.body = {
+			status: 400,
+			message: '请输入手机号码',
+			data: {},
+		}
 		return
 	}
 
 	if (data.phone && !data.authCode) {
-		ctx.status = 400
-		ctx.body = '请输入手机验证码'
+		ctx.body = {
+			status: 400,
+			message: '请输入手机验证码',
+			data: {},
+		}
 		return
 	}
 
 	if (data.phone && data.authCode) {
 		const authCode = await common.redisClient.getAsync(`get_phone_code_${data.phone}`)
 		if (authCode !== data.authCode) {
-			ctx.status = 400
-			ctx.body = '验证码错误'
+			ctx.body = {
+				status: 400,
+				message: '验证码错误',
+				data: {},
+			}
 			return
 		}
 	}
@@ -74,8 +84,11 @@ async function login(ctx) {
 	result = JSON.parse(result)
 
 	if (!result.openid) {
-		ctx.status = 400
-		ctx.body = '系统繁忙,请稍后再试'
+		ctx.body = {
+			status: 400,
+			message: '系统繁忙,请稍后再试',
+			data: {},
+		}
 		return
 	}
 
@@ -84,16 +97,22 @@ async function login(ctx) {
 	console.log('user', user)
 
 	if (!user && !data.phone && !data.authCode) {
-		ctx.status = 400
-		ctx.body = '请输入手机号和验证码'
+		ctx.body = {
+			status: 400,
+			message: '请输入手机号和验证码',
+			data: {},
+		}
 		return
 	}
 
 	const pc = new WXBizDataCrypt(config.wx.app_id, result.session_key)
 	const userData = pc.decryptData(data.encryptedData, data.iv)
 	if (!userData || userData.watermark.appid !== config.wx.app_id) {
-		ctx.status = 400
-		ctx.body = '用户信息验证失败'
+		ctx.body = {
+			status: 400,
+			message: '用户信息验证失败',
+			data: {},
+		}
 		return
 	}
 
@@ -133,9 +152,11 @@ async function login(ctx) {
 
 	await common.redisClient.setAsync(sessionId, JSON.stringify(userData))
 
-	ctx.status = 200
 	ctx.body = {
-		sessionId,
+		status: 200,
+		message: 'success',
+		data: { sessionId,
+			lastJoinCircleId: (await common.redisClient.getAsync(`${userData.openId}_last_join_circle`)) || '' },
 	}
 }
 
@@ -175,8 +196,11 @@ async function get_auth_code(ctx) {
 	const valid = ajv.compile(schemaGetAuthCode)
 
 	if (!valid(data)) {
-		ctx.status = 400
-		ctx.body = '请输入手机号'
+		ctx.body = {
+			status: 400,
+			message: '请输入手机号',
+			data: { },
+		}
 		return
 	}
 
@@ -184,8 +208,11 @@ async function get_auth_code(ctx) {
 	let punishment_time = await common.redisClient.getAsync(`${ip}_${data.phone}_number`)
 	if (punishment_time > 10) {
 		await common.redisClient.expireAsync(`${ip}_${data.phone}_number`, moment().endOf('day').unix() - moment(Date.now()).unix())
-		ctx.status = 400
-		ctx.body = '请求次数频繁,请稍后再试'
+		ctx.body = {
+			status: 400,
+			message: '请求次数频繁,请稍后再试',
+			data: { },
+		}
 		return
 	}
 
@@ -254,8 +281,11 @@ async function get_auth_code(ctx) {
 	await common.redisClient.setAsync(`get_phone_code_${data.phone}`, authCode)
 	await common.redisClient.expireAsync(`get_phone_code_${data.phone}`, 10 * 60)
 
-	ctx.status = 200
-	ctx.body = 'success'
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: { },
+	}
 }
 
 module.exports = {
