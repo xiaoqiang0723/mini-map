@@ -9,7 +9,7 @@ register('/get_auth_code', [methods.POST], login.get_auth_code, { ignoreLogin: t
 register('/circle', [methods.POST, methods.PUT, methods.DELETE, methods.GET], circle.circle)
 register('/circle_join', [methods.POST], circle.circle_join)
 register('/circle_quit', [methods.POST], circle.circle_quit)
-register('/circle_List', [methods.POST], circle.circle_list)
+register('/circle_List', [methods.GET], circle.circle_list)
 register('/resource', [methods.POST, methods.PUT, methods.DELETE, methods.GET], resource.resource)
 register('/resource_list', [methods.POST], resource.resource_list)
 register('/resource_list', [methods.GET], resource.circle_with_user_join)
