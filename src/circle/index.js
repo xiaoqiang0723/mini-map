@@ -371,11 +371,13 @@ async function circle_list(ctx) {
 	const circleWithUserJoin = await common.pool.queryAsync(squel.select().from('circle', 'a').join('circle_user', 'b', 'a.id = b.circle_id').field('a.*')
 		.where('b.user_id = ?', userId)
 		.where('is_owner = ?', 0)
-		.where('is_kick_out = ?', 0))
+		.where('is_kick_out = ?', 0)
+		.toString())
 	const circleWithUserCreate = await common.pool.queryAsync(squel.select().from('circle', 'a').join('circle_user', 'b', 'a.id = b.circle_id').field('a.*')
 		.where('b.user_id = ?', userId)
-		.where('is_owner = ?', 1))
-	const circleWithUserCollect = await common.pool.query(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id'))
+		.where('is_owner = ?', 1)
+		.toString())
+	const circleWithUserCollect = await common.pool.query(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').toString())
 
 	ctx.body = {
 		status: 200,

@@ -414,8 +414,8 @@ async function resource(ctx) {
 const schemaResourceList = {
 	properties: {
 		circleId: { type: 'string' },
-		lat: { type: 'number' },
-		lng: { type: 'number' },
+		lat: { type: 'string' },
+		lng: { type: 'string' },
 		isFlush: { type: 'number' },
 	},
 	required: ['circleId', 'lat', 'lng', 'isFlush'],
@@ -471,7 +471,7 @@ async function resource_list(ctx) {
 		const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
 			.toString())
 
-		const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(v.lat - data.lat) <= 10) && (Math.abs(v.lng - data.lng) <= 10)), has_show_resourceList, 'id')
+		const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(Number(v.lat) - Number(data.lat)) <= 10) && (Math.abs(Number(v.lng) - Number(data.lng)) <= 10)), has_show_resourceList, 'id')
 
 		let returnList = []
 

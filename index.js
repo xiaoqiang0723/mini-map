@@ -12,7 +12,7 @@ register('/circle_quit', [methods.POST], circle.circle_quit)
 register('/circle_List', [methods.GET], circle.circle_list)
 register('/resource', [methods.POST, methods.PUT, methods.DELETE, methods.GET], resource.resource)
 register('/resource_list', [methods.POST], resource.resource_list)
-register('/resource_list', [methods.GET], resource.circle_with_user_join)
+register('/circle_with_user_join', [methods.GET], resource.circle_with_user_join)
 register('/resource_collect', [methods.GET], resource.resource_collect)
 
 koa.router.use(router.routes(), router.allowedMethods())
