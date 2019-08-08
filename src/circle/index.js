@@ -9,8 +9,9 @@ const common = require('../common')
 const schemaCircle_create = {
 	properties: {
 		circleName: { type: 'string' },
+		imgId: { type: 'string' },
 	},
-	required: ['circleName'],
+	required: ['circleName', 'imgId'],
 }
 
 const schemaCirclePut = {
@@ -58,7 +59,21 @@ async function circle(ctx) {
 			return
 		}
 
-		const circleWithId = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', data.circleId)))[0]
+		const circleWithId = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', data.circleId).toString()))[0]
+
+		const userListOfCircle = await common.pool.queryAsync(squel.select().from('circle_user', 'a').join('user', 'b', 'a.user_id = b.id').where('a.circle_id = ?', data.circleId)
+			.where('is_kick_out = ?', 0)
+			.field('a.user_id')
+			.field('b.nick_name')
+			.field('b.avatar_url')
+			.toString())
+
+		circleWithId.userList = userListOfCircle || []
+		circleWithId.member_count = circleWithId.userList.length || 0
+
+		const refreshCount = await common.redisClient.getAsync(`${data.circleId}_reflush`)
+
+		circleWithId.refresh_count = refreshCount || 0
 
 		ctx.body = {
 			status: 200,
@@ -101,10 +116,13 @@ async function circle(ctx) {
 		const userHasCircles = await common.pool.queryAsync(squel.select().from('circle_user').where('user_id = ?', userId).toString())
 		console.log('userHasCircles', userHasCircles)
 
+		const img = (await common.pool.queryAsync(squel.select().from('resource_pic').where('id = ?', data.imgId).toString()))[0]
+
 		await common.pool.queryAsync(squel.insert().into('circle').setFields({
 			id: circleId,
 			circle_name: data.circleName,
 			circle_number: circleNumber.substring(circleNumber.length - 11),
+			head_url: img ? img.pic_url || '' : '',
 			user_id: userId,
 			create_time: moment().unix(),
 		}).toString())
@@ -351,10 +369,15 @@ async function circle_quit(ctx) {
 			}
 			return
 		}
-		await common.pool.queryAsync(squel.update().table('circle_user').set('is_kick_out', 1).where('user_id = ?', data.quitUserId))
+		await common.pool.queryAsync(squel.update().table('circle_user').set('is_kick_out', 1).where('user_id = ?', data.quitUserId)
+			.toString())
+	} else {
+		await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
+			.toString())
+
+		await common.pool.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
 	}
 
-	await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId))
 
 	ctx.body = {
 		status: 200,
@@ -377,7 +400,9 @@ async function circle_list(ctx) {
 		.where('b.user_id = ?', userId)
 		.where('is_owner = ?', 1)
 		.toString())
-	const circleWithUserCollect = await common.pool.query(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').toString())
+	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').toString())
+
+	// const memberCountList = await common.pool.queryAsync(squel.select().from('circle_user').field('count(*)').where('circle_id in ?' ))
 
 	ctx.body = {
 		status: 200,

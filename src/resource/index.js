@@ -22,8 +22,9 @@ const schemaResource = {
 		remark: { type: 'string' },
 		address: { type: 'string' },
 		addressName: { type: 'string' },
+		imgIds: { type: 'array', items: { type: 'string' } },
 	},
-	required: ['circleId', 'resrouceName', 'lat', 'lng'],
+	required: ['circleId', 'resrouceName', 'lat', 'lng', 'imgIds'],
 }
 
 const schemaResourceGet = {
@@ -61,15 +62,15 @@ const client = new OSS({
 	bucket: 'mini-map',
 })
 
-async function putStream(files) {
-	const clientCopy = _.cloneDeep(client)
-	const list = _.map(files, v => clientCopy.putStream(`imgs/${uuid().replace(/-/g, '')}${v.name.substring(v.name.lastIndexOf('.'))}`, fs.createReadStream(v.path), { contentLength: v.size }))
-
-	if (list.length === 0) {
-		return 0
+async function putStream(file) {
+	let result
+	try {
+		if (file) {
+			result = await client.put(`imgs/${uuid().replace(/-/g, '')}${file.name.substring(file.name.lastIndexOf('.'))}`, fs.readFileSync(file.path), { contentLength: file.size })
+		}
+	} catch (e) {
+		console.log('err', e)
 	}
-
-	const result = await Promise.all(list)
 
 	return result
 }
@@ -92,6 +93,33 @@ async function reflushCount(circleId) {
 		return
 	}
 	await common.redisClient.incrbyAsync(`${circleId}_reflush`, 1)
+}
+
+async function upload_img(ctx) {
+	const { files } = ctx.request
+
+	const result = await putStream(files.file)
+
+	let id = ''
+
+	if (result) {
+		id = uuid().replace(/-/g, '')
+		await common.pool.queryAsync(squel.insert().into('resource_pic').setFields({
+			id,
+			resource_id: '',
+			pic_name: result.name,
+			pic_url: result.url,
+			create_time: moment().unix(),
+		}).toString())
+	}
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {
+			imgId: id,
+		},
+	}
 }
 
 async function resource(ctx) {
@@ -129,9 +157,9 @@ async function resource(ctx) {
 		const data = ctx.request.body
 		console.log('data', data)
 
-		const { files } = ctx.request
+		// const { files } = ctx.request
 
-		console.log('files', files)
+		// console.log('files', files)
 		const valid = ajv.compile(schemaResource)
 
 		if (!valid(data)) {
@@ -183,9 +211,6 @@ async function resource(ctx) {
 
 		console.log('data', data)
 
-		const result = await putStream(files.file)
-
-		console.log('result', result)
 
 		const resourceId = uuid().replace(/-/g, '')
 
@@ -221,16 +246,12 @@ async function resource(ctx) {
 
 		await common.pool.queryAsync(sql.toString())
 
-		if (result.length > 0) {
-			console.log('111111')
-			await common.pool.queryAsync(squel.insert().into('resource_pic').setFieldsRows(_.map(result, v => ({
-				resource_id: resourceId,
-				pic_name: v.name,
-				pic_url: v.url,
-				create_time: moment().unix(),
-			}))).toString())
+		if (data.imgIds && data.imgIds.length > 0) {
+			await common.pool.queryAsync(squel.update().table('resource_pic').set('resource_id', resourceId).where('id in ?', data.imgIds)
+				.toString())
 		}
-		await reflushCount(data.circleId)
+
+		// await reflushCount(data.circleId)
 
 		ctx.body = {
 			status: 200,
@@ -418,7 +439,7 @@ const schemaResourceList = {
 		lng: { type: 'string' },
 		isFlush: { type: 'number' },
 	},
-	required: ['circleId', 'lat', 'lng', 'isFlush'],
+	required: ['circleId', 'isFlush'],
 }
 
 async function resource_list(ctx) {
@@ -454,39 +475,49 @@ async function resource_list(ctx) {
 			return
 		}
 
-		const has_show_resourceStr = await common.redisClient.getAsync(`${userId}_has_show_resources`)
-
-		let has_show_resourceList = []
-
-		if (has_show_resourceStr) {
-			has_show_resourceList = JSON.parse(has_show_resourceStr)
-		}
-
-		if (has_show_resourceList.length >= 10 && !data.isFlush) {
-			ctx.status = 200
-			ctx.body = _.drop(has_show_resourceList, has_show_resourceList.length - 10)
-			return
-		}
-
-		const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
-			.toString())
-
-		const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(Number(v.lat) - Number(data.lat)) <= 10) && (Math.abs(Number(v.lng) - Number(data.lng)) <= 10)), has_show_resourceList, 'id')
-
 		let returnList = []
 
-		if (resourcesWithNear.length >= 10) {
-			returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
+		if (data.lng && data.lat) {
+			const has_show_resourceStr = await common.redisClient.getAsync(`${userId}_has_show_resources`)
+
+			let has_show_resourceList = []
+
+			if (has_show_resourceStr) {
+				has_show_resourceList = JSON.parse(has_show_resourceStr)
+			}
+
+			if (has_show_resourceList.length >= 10 && !data.isFlush) {
+				ctx.status = 200
+				ctx.body = _.drop(has_show_resourceList, has_show_resourceList.length - 10)
+				return
+			}
+
+			const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
+				.toString())
+
+			const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(Number(v.lat) - Number(data.lat)) <= 10) && (Math.abs(Number(v.lng) - Number(data.lng)) <= 10)), has_show_resourceList, 'id')
+
+			if (resourcesWithNear.length >= 10) {
+				returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
+			} else {
+				returnList = _.sortBy(resources, () => (0.5 - Math.random())).slice(0, 10) || []
+			}
+
+			returnList = _.map(returnList, v => _.assignIn({}, v))
+
+			has_show_resourceList = _.concat(has_show_resourceList, _.differenceBy(returnList, has_show_resourceList, 'id'))
+
+			await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
+			await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
+			await common.redisClient.delAsync(`${userId}_collect`)
+			await common.redisClient.setAsync(`${userId}_last_join_circle`, `${data.circleId}`)
 		} else {
-			returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
+			const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
+				.toString())
+
+			returnList = _.map(resources, v => _.assignIn({}, v))
 		}
 
-		has_show_resourceList = _.concat(has_show_resourceList, returnList)
-
-		await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
-		await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
-		await common.redisClient.delAsync(`${userId}_collect`)
-		await common.redisClient.setAsync(`${userId}_last_join_circle`, `${data.circleId}`)
 
 		ctx.body = {
 			status: 200,
@@ -567,7 +598,7 @@ async function resource_collect(ctx) {
 	const userId = await common.getUserId(sessionid)
 
 	const user_has_collect = await common.redisClient.getAsync(`${userId}_collect`)
-	await common.redisClient.expireAsync(60 * 60)
+	await common.redisClient.expireAsync(`${userId}_collect`, 60 * 60)
 
 	if (user_has_collect) {
 		ctx.body = {
@@ -578,12 +609,26 @@ async function resource_collect(ctx) {
 		return
 	}
 
+	const resourceCollectWithUser = (await common.pool.queryAsync(squel.select().from('user_collect').where('user_id = ?', userId).where('resource_id = ?', data.resourceId)
+		.toString()))[0]
+
+	if (resourceCollectWithUser) {
+		ctx.body = {
+			status: 400,
+			message: '亲,你已经收藏过该资源了!',
+			data: {},
+		}
+		return
+	}
+
 	await common.pool.queryAsync(squel.insert().into('user_collect').setFields({
 		id: uuid().replace(/-/g, ''),
 		resource_id: data.resourceId,
 		user_id: userId,
 		create_time: moment().unix(),
-	}))
+	}).toString())
+
+	await common.redisClient.setAsync(`${userId}_collect`, 'true')
 
 	ctx.body = {
 		status: 200,
@@ -593,5 +638,5 @@ async function resource_collect(ctx) {
 }
 
 module.exports = {
-	resource, resource_list, circle_with_user_join, resource_collect,
+	resource, resource_list, circle_with_user_join, resource_collect, upload_img,
 }

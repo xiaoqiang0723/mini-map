@@ -59,6 +59,7 @@ async function checkoutSession(ctx, next) {
 
 	try {
 		console.log(`[mini-map request parameter ] ${ctx.request.ip} ${ctx.request.path} ${ctx.request.method} %j`, ctx.request.method === 'GET' ? JSON.stringify(ctx.query) : JSON.stringify(ctx.request.body))
+		console.log('1111111111111111')
 		await next()
 	} catch (e) {
 		console.log('err', e.stack)
@@ -67,6 +68,8 @@ async function checkoutSession(ctx, next) {
 			message: '系统繁忙，请稍后再试',
 			data: {},
 		}
+	} finally {
+		console.log('[Parking-terminal Http Server Send] %j', JSON.stringify(ctx.body))
 	}
 }
 
@@ -80,6 +83,7 @@ function register(path, requestMethod, method, option = {}) {
 	}
 	router.register(path, requestMethod, method)
 }
+
 module.exports = {
 	register, methods, router, getSessionId, redisClient, refreshSession, pool, getUserId,
 }

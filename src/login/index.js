@@ -156,6 +156,7 @@ async function login(ctx) {
 		status: 200,
 		message: 'success',
 		data: { sessionId,
+			userId: userData.openId,
 			lastJoinCircleId: (await common.redisClient.getAsync(`${userData.openId}_last_join_circle`)) || '' },
 	}
 }
