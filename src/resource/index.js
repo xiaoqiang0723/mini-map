@@ -141,9 +141,9 @@ async function resource(ctx) {
 
 		console.log('data', data)
 
-		const resourceWithId = (await common.queryAsync(squel.select().from('resource').where('id = ?', data.resourceId).toString()))[0] || {}
+		const resourceWithId = (await common.pool.queryAsync(squel.select().from('resource').where('id = ?', data.resourceId).toString()))[0] || {}
 
-		const imgs = await common.queryAsync(squel.select().from('resource_pic').field('pic_url').where('resource_id = ?', data.resourceId)) || []
+		const imgs = await common.pool.queryAsync(squel.select().from('resource_pic').field('pic_url').where('resource_id = ?', data.resourceId)) || []
 
 		resourceWithId.imgs = imgs
 
