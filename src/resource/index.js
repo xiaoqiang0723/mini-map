@@ -412,8 +412,11 @@ async function resource(ctx) {
 
 		await common.pool.queryAsync(squel.delete().from('resource').where('id = ?', data.resourceId).toString())
 
-		ctx.body.status = 200
-		ctx.body.message = 'success'
+		ctx.body = {
+			status: 200,
+			message: 'success',
+			data: {},
+		}
 	}
 }
 
