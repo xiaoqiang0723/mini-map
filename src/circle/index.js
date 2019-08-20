@@ -236,6 +236,8 @@ async function circle(ctx) {
 			}
 
 			await connon.queryAsync(sqlStr.toString())
+
+			await connon.commitAsync()
 		} catch (e) {
 			if (connon) {
 				await connon.rollbackAsync()
