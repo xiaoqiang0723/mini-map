@@ -301,7 +301,7 @@ async function resource(ctx) {
 		let connon
 
 		try {
-			connon = common.pool.getConnectionAsync()
+			connon = await common.pool.getConnectionAsync()
 
 			await connon.beginTransactionAsync()
 

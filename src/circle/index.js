@@ -203,7 +203,7 @@ async function circle(ctx) {
 		let connon
 
 		try {
-			connon = common.pool.getConnectionAsync()
+			connon = await common.pool.getConnectionAsync()
 
 			await connon.beginTransactionAsync()
 
@@ -286,7 +286,7 @@ async function circle(ctx) {
 		let connon
 
 		try {
-			connon = common.pool.getConnectionAsync()
+			connon = await common.pool.getConnectionAsync()
 
 			await connon.beginTransactionAsync()
 
