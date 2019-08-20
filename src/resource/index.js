@@ -260,7 +260,6 @@ async function resource(ctx) {
 			data: {},
 		}
 	} else if (method === 'PUT') {
-		console.log('33333')
 		const data = ctx.request.body
 
 		const valid = ajv.compile(schemaResourcePut)
@@ -273,7 +272,6 @@ async function resource(ctx) {
 			}
 			return
 		}
-		console.log('1111')
 
 		const { sessionid } = ctx.request.header
 
@@ -315,23 +313,9 @@ async function resource(ctx) {
 				if (deleteImgs.length > 0) {
 					await deleteMulti(_.map(deleteImgs, v => v.pic_name))
 				}
-			}
 
-			const { file } = ctx.request.files
-
-			let result = []
-			if (file.length > 0) {
-				result = await putStream(file) || []
-			}
-
-			if (result.length > 0) {
-				console.log('111111')
-				await connon.queryAsync(squel.insert().into('resource_pic').setFieldsRows(_.map(result, v => ({
-					resource_id: data.resourceId,
-					pic_name: v.name,
-					pic_url: v.url,
-					create_time: moment().unix(),
-				}))).toString())
+				await common.pool.queryAsync(squel.update().table('resource_pic').set('resource_id', data.resourceId).where('id in ?', data.imgIds)
+					.toString())
 			}
 
 			const sql = squel.update().table('resource').where('id = ?', data.resourceId).set('update_time', moment().unix())

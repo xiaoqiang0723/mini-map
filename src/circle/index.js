@@ -3,8 +3,29 @@ const squel = require('squel')
 const uuidV4 = require('uuid/v4')
 const uuidV1 = require('uuid/v1')
 const moment = require('moment')
+const OSS = require('ali-oss')
+const _ = require('lodash')
+
+const config = require('../../config')
 
 const common = require('../common')
+
+const client = new OSS({
+	region: 'oss-cn-zhangjiakou',
+	accessKeyId: config.ali.msg_accesskey_id,
+	accessKeySecret: config.ali.msg_accesskey_secret,
+	bucket: 'mini-map',
+})
+
+
+async function deleteMulti(fileNames) {
+	const clientCopy = _.cloneDeep(client)
+	const result = await clientCopy.deleteMulti(fileNames, { quite: true })
+
+	console.log('result', result)
+
+	return result
+}
 
 const schemaCircle_create = {
 	properties: {
@@ -20,6 +41,7 @@ const schemaCirclePut = {
 		notice: { type: 'string' },
 		remark: { type: 'string' },
 		circleId: { type: 'string' },
+		imgId: { type: 'string' },
 	},
 	required: ['circleId'],
 }
@@ -178,19 +200,51 @@ async function circle(ctx) {
 			return
 		}
 
-		const sqlStr = squel.update().table('circle').where('id = ?', data.circleId)
+		let connon
 
-		if (typeof data.qqqun !== 'undefined') {
-			sqlStr.set('qq_qun', data.qqqun)
-		}
-		if (typeof data.notice !== 'undefined') {
-			sqlStr.set('notice', data.notice)
-		}
-		if (typeof data.remark !== 'undefined') {
-			sqlStr.set('remark', data.remark)
-		}
+		try {
+			connon = common.pool.getConnectionAsync()
 
-		await common.pool.queryAsync(sqlStr.toString())
+			await connon.beginTransactionAsync()
+
+			let img
+
+			if (data.imgId) {
+				[img] = await connon.queryAsync(squel.select().from('resource_pic').where('id = ?', data.imgId).toString())
+
+				if (img && img.pic_url !== user_has_circle.head_url) {
+					const deleteImg = (await connon.queryAsync(squel.select().from('resource_pic').where('pic_url = ?', user_has_circle.head_url).toString()))[0]
+					if (deleteImg) {
+						await deleteMulti([deleteImg.pic_name])
+					}
+				}
+			}
+
+			const sqlStr = squel.update().table('circle').where('id = ?', data.circleId)
+
+			if (typeof data.qqqun !== 'undefined') {
+				sqlStr.set('qq_qun', data.qqqun)
+			}
+			if (typeof data.notice !== 'undefined') {
+				sqlStr.set('notice', data.notice)
+			}
+			if (typeof data.remark !== 'undefined') {
+				sqlStr.set('remark', data.remark)
+			}
+			if (img && img.pic_url !== user_has_circle.head_url) {
+				sqlStr.set('head_url', img.pic_url)
+			}
+
+			await connon.queryAsync(sqlStr.toString())
+		} catch (e) {
+			if (connon) {
+				await connon.rollbackAsync()
+			}
+		} finally {
+			if (connon) {
+				connon.release()
+			}
+		}
 
 		ctx.body = {
 			status: 200,
