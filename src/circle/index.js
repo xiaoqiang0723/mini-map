@@ -166,8 +166,8 @@ async function circle(ctx) {
 
 		const userId = await common.getUserId(sessionid)
 
-		const user_has_circle = await common.pool.queryAsync(squel.select().from('circle').where('user_id = ?', userId).where('id = ?', data.circleId)
-			.toString())[0]
+		const user_has_circle = (await common.pool.queryAsync(squel.select().from('circle').where('user_id = ?', userId).where('id = ?', data.circleId)
+			.toString()))[0]
 
 		if (!user_has_circle) {
 			ctx.body = {
@@ -217,8 +217,8 @@ async function circle(ctx) {
 
 		const userId = await common.getUserId(sessionid)
 
-		const user_has_circle = await common.pool.queryAsync(squel.select().from('circle').where('user_id = ?', userId).where('id = ?', data.circleId)
-			.toString())[0]
+		const user_has_circle = (await common.pool.queryAsync(squel.select().from('circle').where('user_id = ?', userId).where('id = ?', data.circleId)
+			.toString()))[0]
 
 		if (!user_has_circle) {
 			ctx.body = {
