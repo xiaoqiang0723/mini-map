@@ -131,7 +131,7 @@ async function login(ctx) {
 			create_time: moment().unix(),
 		}).toString())
 	} else {
-		const sql = squel.update().table('user')
+		const sql = squel.update().table('user').where('id = ?', userData.openId)
 		if (userData.nickName) {
 			sql.set('nick_name', userData.nickName)
 		}

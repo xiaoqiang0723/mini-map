@@ -24,4 +24,9 @@ module.exports = {
 		sms_url: 'https://dysmsapi.aliyuncs.com/',
 		sms_code: process.env.SMS_CODE || 'SMS_169111430',
 	},
+	limit: {
+		addResourceWithDay: 50,
+		reflushCount: 30,
+		createCircleCount: 50,
+	},
 }

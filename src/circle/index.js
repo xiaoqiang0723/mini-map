@@ -122,7 +122,7 @@ async function circle(ctx) {
 
 		const circleList = await common.pool.queryAsync(squel.select().from('circle').where('user_id = ?', userId).toString())
 
-		if (circleList.length >= 3) {
+		if (circleList.length >= config.limit.createCircleCount) {
 			ctx.body = {
 				status: 400,
 				message: '您创建的圈子已超过最大限制',
@@ -348,13 +348,13 @@ async function circle_join(ctx) {
 		if (userHasKickout.is_kick_out) {
 			ctx.body = {
 				status: 400,
-				message: '您已经被该圈主删除，不可进入',
+				message: '您已经被该圈主踢出，不可进入',
 				data: {},
 			}
 			return
 		}
 		ctx.body = {
-			status: 400,
+			status: 205,	// 唯一状态码，代表已经加过圈子
 			message: '您已加过该圈子，不可重复进入',
 			data: {},
 		}

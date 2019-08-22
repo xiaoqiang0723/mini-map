@@ -24,7 +24,7 @@ const schemaResource = {
 		addressName: { type: 'string' },
 		imgIds: { type: 'array', items: { type: 'string' } },
 	},
-	required: ['circleId', 'resrouceName', 'lat', 'lng', 'imgIds'],
+	required: ['circleId', 'resrouceName', 'lat', 'lng'],
 }
 
 const schemaResourceGet = {
@@ -176,17 +176,18 @@ async function resource(ctx) {
 
 		const userId = await common.getUserId(sessionid)
 
-		const userHasAddWithToday = (await common.pool.queryAsync(squel.select().from('resource').where('user_id = ?', userId).where('create_time > ?', moment().startOf('day').unix())
-			.toString()))[0]
+		// 调试所用，展示关闭
+		// const userHasAddWithToday = (await common.pool.queryAsync(squel.select().from('resource').where('user_id = ?', userId).where('create_time > ?', moment().startOf('day').unix())
+		// 	.toString()))[0]
 
-		if (userHasAddWithToday) {
-			ctx.body = {
-				status: 400,
-				message: '亲，今天您已经添加过资源了，请改天再试试吧',
-				data: {},
-			}
-			return
-		}
+		// if (userHasAddWithToday) {
+		// 	ctx.body = {
+		// 		status: 400,
+		// 		message: '亲，今天您已经添加过资源了，请改天再试试吧',
+		// 		data: {},
+		// 	}
+		// 	return
+		// }
 
 		const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).toString())
 
@@ -201,7 +202,7 @@ async function resource(ctx) {
 
 		const resourcesWithToday = _.filter(resources, v => v.create_time > moment().startOf('day').unix())
 
-		if (resourcesWithToday.length >= 3) {
+		if (resourcesWithToday.length >= config.limit.addResourceWithDay) {
 			ctx.body = {
 				status: 400,
 				message: '该圈子今天添加的资源数已超过限制，请改天再试试吧',
@@ -344,7 +345,7 @@ async function resource(ctx) {
 
 			await connon.commitAsync()
 
-			await reflushCount(data.circleId)
+			// await reflushCount(data.circleId)
 		} catch (e) {
 			if (connon) {
 				await connon.rollbackAsync()
@@ -454,7 +455,7 @@ async function resource_list(ctx) {
 
 		const flushCount = await common.redisClient.getAsync(`${userId}_flushCount`) || 0
 
-		if (Number(flushCount) >= 3) {
+		if (data.isFlush && Number(flushCount) >= config.limit.reflushCount) {
 			ctx.body = {
 				status: 400,
 				message: '您已经刷新超过3次了',
@@ -499,6 +500,9 @@ async function resource_list(ctx) {
 			await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
 			await common.redisClient.delAsync(`${userId}_collect`)
 			await common.redisClient.setAsync(`${userId}_last_join_circle`, `${data.circleId}`)
+			if (data.isFlush) {
+				await reflushCount(data.circleId)
+			}
 		} else {
 			const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
 				.toString())
@@ -586,7 +590,7 @@ async function resource_collect(ctx) {
 	const userId = await common.getUserId(sessionid)
 
 	const user_has_collect = await common.redisClient.getAsync(`${userId}_collect`)
-	await common.redisClient.expireAsync(`${userId}_collect`, 60 * 60)
+	await common.redisClient.expireAsync(`${userId}_collect`, moment().endOf('day').unix() - moment(Date.now()).unix())
 
 	if (user_has_collect) {
 		ctx.body = {
