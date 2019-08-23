@@ -145,6 +145,7 @@ async function circle(ctx) {
 			circle_name: data.circleName,
 			circle_number: circleNumber.substring(circleNumber.length - 11),
 			head_url: img ? img.pic_url || '' : '',
+			resource_id: circleId,
 			user_id: userId,
 			create_time: moment().unix(),
 		}).toString())
@@ -213,6 +214,8 @@ async function circle(ctx) {
 				[img] = await connon.queryAsync(squel.select().from('resource_pic').where('id = ?', data.imgId).toString())
 
 				if (img && img.pic_url !== user_has_circle.head_url) {
+					await connon.queryAsync(squel.update().table('resource_pic').set('resource_id', data.circleId).where('id = ?', data.imgId)
+						.toString())
 					const deleteImg = (await connon.queryAsync(squel.select().from('resource_pic').where('pic_url = ?', user_has_circle.head_url).toString()))[0]
 					if (deleteImg) {
 						await deleteMulti([deleteImg.pic_name])
@@ -304,6 +307,11 @@ async function circle(ctx) {
 			if (connon) {
 				connon.release()
 			}
+		}
+
+		const lastJoinCircleId = await common.redisClient.getAsync(`${userId}_last_join_circle`)
+		if (lastJoinCircleId === data.circleId) {
+			await common.redisClient.delAsync(`${userId}_last_join_circle`)
 		}
 
 		ctx.body = {
@@ -412,11 +420,11 @@ async function circle_quit(ctx) {
 
 	const userId = await common.getUserId(sessionid)
 
-	if (data.quitUserId) {
-		const userIsCircler = (await common.pool.queryAsync(squel.select().from('circle_user').where('circle_id = ?', data.circleId).where('user_id = ?', userId)
-			.where('is_owner = ?', 1)
-			.toString()))[0]
+	const userIsCircler = (await common.pool.queryAsync(squel.select().from('circle_user').where('circle_id = ?', data.circleId).where('user_id = ?', userId)
+		.where('is_owner = ?', 1)
+		.toString()))[0]
 
+	if (data.quitUserId) {
 		if (!userIsCircler) {
 			ctx.body = {
 				status: 400,
@@ -427,11 +435,58 @@ async function circle_quit(ctx) {
 		}
 		await common.pool.queryAsync(squel.update().table('circle_user').set('is_kick_out', 1).where('user_id = ?', data.quitUserId)
 			.toString())
-	} else {
-		await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
-			.toString())
+	} else if (userIsCircler) { // 圈主解散圈子
+		let connon
+		try {
+			connon = await common.pool.getConnectionAsync()
+			await connon.beginTransactionAsync()
 
-		await common.pool.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
+			const deleteImgs = await connon.queryAsync(squel.select().from('resource_pic').where('resource_id = ?', data.circleId).toString())
+
+			if (deleteImgs.length > 0) {
+				await deleteMulti(_.map(deleteImgs, v => v.pic_name))
+			}
+
+			await connon.queryAsync(squel.delete().from('resource_pic').where('resource_id = ?', data.circleId).toString())
+
+			const resourceListWithCircle = await connon.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).toString())
+
+			await connon.queryAsync(squel.delete().from('user_collect').where('resource_id = ?', _.map(resourceListWithCircle, v => v.id).toString()))
+
+			await connon.queryAsync(squel.delete().from('resource').where('circle_id = ?', data.circleId).toString())
+
+			await connon.queryAsync(squel.delete().from('circle_user').where('circle_id = ?', data.circleId)
+				.toString())
+
+			await connon.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
+		} catch (e) {
+			if (connon) {
+				await connon.rollbackAsync()
+			}
+		} finally {
+			if (connon) {
+				connon.release()
+			}
+		}
+	} else {	// 圈成员退出圈子
+		let connon
+		try {
+			connon = await common.pool.getConnectionAsync()
+			await connon.beginTransactionAsync()
+
+			await connon.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
+				.toString())
+
+			await connon.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
+		} catch (e) {
+			if (connon) {
+				await connon.rollbackAsync()
+			}
+		} finally {
+			if (connon) {
+				connon.release()
+			}
+		}
 	}
 
 
@@ -459,6 +514,36 @@ async function circle_list(ctx) {
 	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').toString())
 
 	// const memberCountList = await common.pool.queryAsync(squel.select().from('circle_user').field('count(*)').where('circle_id in ?' ))
+
+	const circleListWithUser = _.concat(circleWithUserCreate, circleWithUserJoin)
+
+	const flushCirlceWithUser = _.map(circleListWithUser, async v => ({
+		id: v.id,
+		refresh_count: await common.redisClient.getAsync(`${v.id}_reflush`) || 0,
+	}))
+
+	console.log('flushCirlceWithUser', flushCirlceWithUser)
+
+	_.forEach(circleWithUserCreate, (v) => {
+		v.refresh_count = _.find(flushCirlceWithUser, { id: v.id }).refresh_count
+	})
+
+	_.forEach(circleWithUserJoin, (v) => {
+		v.refresh_count = _.find(flushCirlceWithUser, { id: v.id }).refresh_count
+	})
+
+	const menberCountListWithUser = await common.pool.queryAsync(squel.select().from('circle_user').field('circle_id').field('count(*) as \'member_count\'')
+		.where('circle_id in ?', _.map(circleListWithUser, v => v.id))
+		.group('circle_id')
+		.toString())
+
+	_.forEach(circleWithUserCreate, (v) => {
+		v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }).member_count
+	})
+
+	_.forEach(circleWithUserJoin, (v) => {
+		v.member_count = _.find(menberCountListWithUser, { id: v.id }).member_count
+	})
 
 	ctx.body = {
 		status: 200,
