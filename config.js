@@ -14,6 +14,8 @@ module.exports = {
 		port: process.env.REDIS_PORT || 6379,
 	},
 	wx: {
+		qr_code_url: 'https://api.weixin.qq.com/wxa/getwxacodeunlimit',
+		access_token_url: 'https://api.weixin.qq.com/cgi-bin/token',
 		login_url: 'https://api.weixin.qq.com/sns/jscode2session',
 		app_id: process.env.WX_APP_ID || 'wx9a9124e8c1fd84be',
 		app_secret: process.env.WX_APP_SECRET || '991e3c3db2b31d5e865d86a1b71e3c58',
@@ -28,5 +30,6 @@ module.exports = {
 		addResourceWithDay: 50,
 		reflushCount: 30,
 		createCircleCount: 50,
+		startSchedule: process.env.START_SCHEDULE || false,
 	},
 }

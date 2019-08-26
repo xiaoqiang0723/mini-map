@@ -5,6 +5,7 @@ const uuidV1 = require('uuid/v1')
 const moment = require('moment')
 const OSS = require('ali-oss')
 const _ = require('lodash')
+const request = require('request-promise')
 
 const config = require('../../config')
 
@@ -17,6 +18,31 @@ const client = new OSS({
 	bucket: 'mini-map',
 })
 
+
+const getQRCodeOption = {
+	url: config.wx.qr_code_url,
+	method: 'POST',
+	qs: {
+		access_token: '',
+	},
+	body: {
+		scene: '',
+		page: '',
+	},
+	JSON: true,
+}
+
+async function putBuffer(fileBuffer) {
+	let result
+	try {
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, fileBuffer)
+		console.log(result)
+	} catch (e) {
+		console.log(e)
+	}
+
+	return result
+}
 
 async function deleteMulti(fileNames) {
 	const clientCopy = _.cloneDeep(client)
@@ -140,15 +166,47 @@ async function circle(ctx) {
 
 		const img = (await common.pool.queryAsync(squel.select().from('resource_pic').where('id = ?', data.imgId).toString()))[0]
 
+		// 生成二维码
+		let qrCodeUrl = ''
+		const accessToken = await common.redisClient.getAsync('wx_access_token')
+		getQRCodeOption.qs.access_token = accessToken
+		getQRCodeOption.body.scene = `circleId=${circleId}`
+		getQRCodeOption.body.page = 'pages/share/share'
+
+		const bufferResult = await request(getQRCodeOption)
+
+		console.log('bufferResult', bufferResult)
+
+		if (bufferResult.errcode === 0 && bufferResult.errmsg === 'ok') {
+			const resultWithPushImg = await putBuffer(bufferResult.buffer)
+
+			if (resultWithPushImg) {
+				qrCodeUrl = resultWithPushImg.url
+
+				const id = uuidV4().replace(/-/g, '')
+				await common.pool.queryAsync(squel.insert().into('resource_pic').setFields({
+					id,
+					resource_id: circleId,
+					pic_name: resultWithPushImg.name,
+					pic_url: resultWithPushImg.url,
+					create_time: moment().unix(),
+				}).toString())
+			}
+		}
+
 		await common.pool.queryAsync(squel.insert().into('circle').setFields({
 			id: circleId,
 			circle_name: data.circleName,
 			circle_number: circleNumber.substring(circleNumber.length - 11),
 			head_url: img ? img.pic_url || '' : '',
+			circle_qr_code: qrCodeUrl,
 			resource_id: circleId,
 			user_id: userId,
 			create_time: moment().unix(),
 		}).toString())
+
+		await common.pool.queryAsync(squel.update().table('resource_pic').set('resource_id', data.circleId).where('id = ?', data.imgId)
+			.toString())
 
 		await common.pool.queryAsync(squel.insert().into('circle_user').setFields({
 			circle_id: circleId,
@@ -511,7 +569,8 @@ async function circle_list(ctx) {
 		.where('b.user_id = ?', userId)
 		.where('is_owner = ?', 1)
 		.toString())
-	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').toString())
+	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').where('b.user_id = ?', userId)
+		.toString())
 
 	// const memberCountList = await common.pool.queryAsync(squel.select().from('circle_user').field('count(*)').where('circle_id in ?' ))
 

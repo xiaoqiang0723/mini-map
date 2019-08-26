@@ -3,6 +3,7 @@ const { router, register, methods } = require('./src/common')
 const login = require('./src/login')
 const circle = require('./src/circle')
 const resource = require('./src/resource')
+const schedule = require('./src/schedule')
 
 register('/login', [methods.POST], login.login, { ignoreLogin: true })
 register('/get_auth_code', [methods.POST], login.get_auth_code, { ignoreLogin: true })
@@ -19,3 +20,6 @@ register('/upload_img', [methods.POST], resource.upload_img)
 koa.router.use(router.routes(), router.allowedMethods())
 
 koa.enableRouter()
+
+
+schedule.myEmitter.emit('start_schedule')
