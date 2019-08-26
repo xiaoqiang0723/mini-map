@@ -591,18 +591,20 @@ async function circle_list(ctx) {
 		v.refresh_count = _.find(flushCirlceWithUser, { id: v.id }).refresh_count
 	})
 
-	const menberCountListWithUser = await common.pool.queryAsync(squel.select().from('circle_user').field('circle_id').field('count(*) as \'member_count\'')
-		.where('circle_id in ?', _.map(circleListWithUser, v => v.id))
-		.group('circle_id')
-		.toString())
+	if (circleListWithUser.length > 0) {
+		const menberCountListWithUser = await common.pool.queryAsync(squel.select().from('circle_user').field('circle_id').field('count(*) as \'member_count\'')
+			.where('circle_id in ?', _.map(circleListWithUser, v => v.id))
+			.group('circle_id')
+			.toString())
 
-	_.forEach(circleWithUserCreate, (v) => {
-		v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }).member_count
-	})
+		_.forEach(circleWithUserCreate, (v) => {
+			v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }).member_count
+		})
 
-	_.forEach(circleWithUserJoin, (v) => {
-		v.member_count = _.find(menberCountListWithUser, { id: v.id }).member_count
-	})
+		_.forEach(circleWithUserJoin, (v) => {
+			v.member_count = _.find(menberCountListWithUser, { id: v.id }).member_count
+		})
+	}
 
 	ctx.body = {
 		status: 200,
