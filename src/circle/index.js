@@ -581,6 +581,8 @@ async function circle_list(ctx) {
 		refresh_count: await common.redisClient.getAsync(`${v.id}_reflush`) || 0,
 	}))
 
+	await Promise.all(flushCirlceWithUser)
+
 	console.log('flushCirlceWithUser', flushCirlceWithUser)
 
 	_.forEach(circleWithUserCreate, (v) => {
