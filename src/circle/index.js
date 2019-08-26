@@ -581,16 +581,16 @@ async function circle_list(ctx) {
 		refresh_count: await common.redisClient.getAsync(`${v.id}_reflush`) || 0,
 	}))
 
-	await Promise.all(flushCirlceWithUser)
+	const flushCirlceWithUserList = await Promise.all(flushCirlceWithUser)
 
-	console.log('flushCirlceWithUser', flushCirlceWithUser)
+	console.log('flushCirlceWithUserList', flushCirlceWithUserList)
 
 	_.forEach(circleWithUserCreate, (v) => {
-		v.refresh_count = _.find(flushCirlceWithUser, { id: v.id }).refresh_count
+		v.refresh_count = _.find(flushCirlceWithUserList, { id: v.id }).refresh_count
 	})
 
 	_.forEach(circleWithUserJoin, (v) => {
-		v.refresh_count = _.find(flushCirlceWithUser, { id: v.id }).refresh_count
+		v.refresh_count = _.find(flushCirlceWithUserList, { id: v.id }).refresh_count
 	})
 
 	if (circleListWithUser.length > 0) {
