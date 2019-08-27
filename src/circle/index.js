@@ -520,6 +520,7 @@ async function circle_quit(ctx) {
 
 			await connon.commitAsync()
 		} catch (e) {
+			console.log('e', e.stack())
 			if (connon) {
 				await connon.rollbackAsync()
 			}
@@ -586,11 +587,11 @@ async function circle_list(ctx) {
 			.toString())
 
 		_.forEach(circleWithUserCreate, (v) => {
-			v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }).member_count
+			v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }) ? _.find(menberCountListWithUser, { circle_id: v.id }).member_count : 0
 		})
 
 		_.forEach(circleWithUserJoin, (v) => {
-			v.member_count = _.find(menberCountListWithUser, { id: v.id }).member_count
+			v.member_count = _.find(menberCountListWithUser, { id: v.id }) ? _.find(menberCountListWithUser, { id: v.id }).member_count : 0
 		})
 	}
 
