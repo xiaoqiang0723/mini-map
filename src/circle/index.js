@@ -201,7 +201,6 @@ async function circle(ctx) {
 			circle_number: circleNumber.substring(circleNumber.length - 11),
 			head_url: img ? img.pic_url || '' : '',
 			circle_qr_code: qrCodeUrl,
-			resource_id: circleId,
 			user_id: userId,
 			create_time: moment().unix(),
 		}).toString())
