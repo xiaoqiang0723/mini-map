@@ -517,6 +517,8 @@ async function circle_quit(ctx) {
 				.toString())
 
 			await connon.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
+
+			await connon.commitAsync()
 		} catch (e) {
 			if (connon) {
 				await connon.rollbackAsync()
@@ -527,24 +529,8 @@ async function circle_quit(ctx) {
 			}
 		}
 	} else {	// 圈成员退出圈子
-		let connon
-		try {
-			connon = await common.pool.getConnectionAsync()
-			await connon.beginTransactionAsync()
-
-			await connon.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
-				.toString())
-
-			await connon.queryAsync(squel.delete().from('circle').where('id = ?', data.circleId).toString())
-		} catch (e) {
-			if (connon) {
-				await connon.rollbackAsync()
-			}
-		} finally {
-			if (connon) {
-				connon.release()
-			}
-		}
+		await common.pool.queryAsync(squel.delete().from('circle_user').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
+			.toString())
 	}
 
 
