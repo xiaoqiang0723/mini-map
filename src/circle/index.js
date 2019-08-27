@@ -20,7 +20,7 @@ const client = new OSS({
 
 
 const getQRCodeOption = {
-	url: config.wx.qr_code_url,
+	uri: config.wx.qr_code_url,
 	method: 'POST',
 	qs: {
 		access_token: '',
@@ -29,7 +29,7 @@ const getQRCodeOption = {
 		scene: '',
 		page: '',
 	},
-	JSON: true,
+	json: true,
 }
 
 async function putBuffer(fileBuffer) {
@@ -168,12 +168,13 @@ async function circle(ctx) {
 
 		// 生成二维码
 		let qrCodeUrl = ''
-		const accessToken = await common.redisClient.getAsync('wx_access_token')
-		getQRCodeOption.qs.access_token = accessToken
-		getQRCodeOption.body.scene = `circleId=${circleId}`
-		getQRCodeOption.body.page = 'pages/share/share'
+		const accessToken = await common.redisClient.getAsync('wx_access_token') || ''
+		const getQRCodeOptionCopy = _.cloneDeep(getQRCodeOption)
+		getQRCodeOptionCopy.qs.access_token = accessToken
+		getQRCodeOptionCopy.body.scene = `circleId=${circleId}`
+		getQRCodeOptionCopy.body.page = 'pages/share/share'
 
-		const bufferResult = await request(getQRCodeOption)
+		const bufferResult = await request(getQRCodeOptionCopy)
 
 		console.log('bufferResult', bufferResult)
 

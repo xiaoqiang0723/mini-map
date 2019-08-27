@@ -61,7 +61,7 @@ async function checkoutSession(ctx, next) {
 
 	try {
 		console.log(`[mini-map request parameter ] ${ctx.request.ip} ${ctx.request.path} ${ctx.request.method} %j`, ctx.request.method === 'GET' ? JSON.stringify(ctx.query) : JSON.stringify(ctx.request.body))
-		console.log('1111111111111111')
+		// console.log('1111111111111111')
 		await next()
 	} catch (e) {
 		console.log('err', e.stack)
