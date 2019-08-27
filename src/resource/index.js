@@ -394,7 +394,7 @@ async function resource(ctx) {
 			return
 		}
 		if (userId !== resourceWithId.user_id) {
-			const circle = (await common.pool.queryAsync('circle').where('id = ?', resourceWithId.circle_id).toString())[0]
+			const circle = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', resourceWithId.circle_id).toString()))[0]
 
 			ctx.body = {
 				status: 400,
@@ -631,6 +631,20 @@ async function resource_collect(ctx) {
 	}
 }
 
+async function resource_list_with_myself(ctx) {
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const resourceList = await common.pool.queryAsync(squel.select().from('resource').where('user_id = ?', userId).toString())
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: resourceList || [],
+	}
+}
+
 module.exports = {
-	resource, resource_list, circle_with_user_join, resource_collect, upload_img,
+	resource, resource_list, circle_with_user_join, resource_collect, upload_img, resource_list_with_myself,
 }

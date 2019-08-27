@@ -536,11 +536,20 @@ async function circle_quit(ctx) {
 			.toString())
 	}
 
+	const lastJoinCircleId = await common.redisClient.getAsync(`${userId}_last_join_circle`)
+	if (lastJoinCircleId === data.circleId) {
+		await common.redisClient.delAsync(`${userId}_last_join_circle`)
+	}
+
+	const circleWithUser = (await common.pool.queryAsync(squel.select().from('circle_user').where('user_id = ?', userId).where('is_kick_out = ?', 0)
+		.toString()))[0]
 
 	ctx.body = {
 		status: 200,
 		message: 'success',
-		data: {},
+		data: {
+			lastJoinCircleId: circleWithUser ? circleWithUser.circle_id : '',
+		},
 	}
 }
 
@@ -588,12 +597,14 @@ async function circle_list(ctx) {
 			.group('circle_id')
 			.toString())
 
+		console.log('menberCountListWithUser', menberCountListWithUser)
+
 		_.forEach(circleWithUserCreate, (v) => {
 			v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }) ? _.find(menberCountListWithUser, { circle_id: v.id }).member_count : 0
 		})
 
 		_.forEach(circleWithUserJoin, (v) => {
-			v.member_count = _.find(menberCountListWithUser, { id: v.id }) ? _.find(menberCountListWithUser, { id: v.id }).member_count : 0
+			v.member_count = _.find(menberCountListWithUser, { circle_id: v.id }) ? _.find(menberCountListWithUser, { circle_id: v.id }).member_count : 0
 		})
 	}
 
