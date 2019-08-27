@@ -246,6 +246,8 @@ async function resource(ctx) {
 			sql.set('address_name', data.addressName)
 		}
 
+		console.log('sql', sql.toString())
+
 		await common.pool.queryAsync(sql.toString())
 
 		if (data.imgIds && data.imgIds.length > 0) {

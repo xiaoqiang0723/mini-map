@@ -520,7 +520,7 @@ async function circle_quit(ctx) {
 
 			await connon.commitAsync()
 		} catch (e) {
-			console.log('e', e.stack())
+			console.log('e', e.stack)
 			if (connon) {
 				await connon.rollbackAsync()
 			}
