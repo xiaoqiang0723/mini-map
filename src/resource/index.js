@@ -143,7 +143,8 @@ async function resource(ctx) {
 
 		const resourceWithId = (await common.pool.queryAsync(squel.select().from('resource').where('id = ?', data.resourceId).toString()))[0] || {}
 
-		const imgs = await common.pool.queryAsync(squel.select().from('resource_pic').field('pic_url').where('resource_id = ?', data.resourceId)
+		const imgs = await common.pool.queryAsync(squel.select().from('resource_pic').field('id').field('pic_url')
+			.where('resource_id = ?', data.resourceId)
 			.toString()) || []
 
 		resourceWithId.imgs = imgs
@@ -498,6 +499,21 @@ async function resource_list(ctx) {
 
 			has_show_resourceList = _.concat(has_show_resourceList, _.differenceBy(returnList, has_show_resourceList, 'id'))
 
+			if (has_show_resourceList.length > 0) {
+				const imgs = await common.pool.queryAsync(squel.select().field('id').field('resource_id').field('pic_url')
+					.from('resource_pic')
+					.where('resource_id in ?', _.map(has_show_resourceList, v => v.id).toString()))
+
+				if (imgs.length > 0) {
+					const imgObj = _.groupBy(imgs, 'resource_id')
+					_.forEach(has_show_resourceList, (v) => {
+						if (imgObj[v.id]) {
+							v.imgs = imgObj[v.id]
+						}
+					})
+				}
+			}
+
 			await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
 			await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
 			await common.redisClient.delAsync(`${userId}_collect`)
@@ -638,6 +654,21 @@ async function resource_list_with_myself(ctx) {
 
 	const resourceList = await common.pool.queryAsync(squel.select().from('resource').where('user_id = ?', userId).toString())
 
+	if (resourceList.length > 0) {
+		const imgs = await common.pool.queryAsync(squel.select().field('id').field('resource_id').field('pic_url')
+			.from('resource_pic')
+			.where('resource_id in ?', _.map(resourceList, v => v.id).toString()))
+
+		if (imgs.length > 0) {
+			const imgObj = _.groupBy(imgs, 'resource_id')
+			_.forEach(resourceList, (v) => {
+				if (imgObj[v.id]) {
+					v.imgs = imgObj[v.id]
+				}
+			})
+		}
+	}
+
 	ctx.body = {
 		status: 200,
 		message: 'success',
@@ -645,6 +676,36 @@ async function resource_list_with_myself(ctx) {
 	}
 }
 
+async function resource_list_with_collect(ctx) {
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').where('b.user_id = ?', userId)
+		.toString())
+
+	if (circleWithUserCollect.length > 0) {
+		const imgs = await common.pool.queryAsync(squel.select().field('id').field('resource_id').field('pic_url')
+			.from('resource_pic')
+			.where('resource_id in ?', _.map(circleWithUserCollect, v => v.id).toString()))
+
+		if (imgs.length > 0) {
+			const imgObj = _.groupBy(imgs, 'resource_id')
+			_.forEach(circleWithUserCollect, (v) => {
+				if (imgObj[v.id]) {
+					v.imgs = imgObj[v.id]
+				}
+			})
+		}
+	}
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: circleWithUserCollect || [],
+	}
+}
+
 module.exports = {
-	resource, resource_list, circle_with_user_join, resource_collect, upload_img, resource_list_with_myself,
+	resource, resource_list, circle_with_user_join, resource_collect, upload_img, resource_list_with_myself, resource_list_with_collect,
 }

@@ -567,8 +567,6 @@ async function circle_list(ctx) {
 		.where('b.user_id = ?', userId)
 		.where('is_owner = ?', 1)
 		.toString())
-	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').where('b.user_id = ?', userId)
-		.toString())
 
 	// const memberCountList = await common.pool.queryAsync(squel.select().from('circle_user').field('count(*)').where('circle_id in ?' ))
 
@@ -614,7 +612,6 @@ async function circle_list(ctx) {
 		data: {
 			circleWithUserJoin,
 			circleWithUserCreate,
-			circleWithUserCollect,
 		},
 	}
 }

@@ -225,7 +225,7 @@ async function get_auth_code(ctx) {
 
 	await common.redisClient.setAsync(`${ip}_${data.phone}_number`, `${punishment_time}`)
 
-	const authCode = uuid().replace(/-/g, '').substr(0, 6)
+	const authCode = uuid().replace(/-/g, '').replace(/[a-z]/g, '').substr(0, 4)
 	const signatureNonce = uuid()
 	const timestamp = `${moment(new Date().getTime() - 3600 * 1000 * 8).format('YYYY-MM-DDTHH:mm:ss')}Z`
 
