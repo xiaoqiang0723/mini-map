@@ -676,7 +676,7 @@ async function resource_list_with_myself(ctx) {
 	}
 }
 
-async function resource_list_with_collect(ctx) {
+async function list_with_user_collect(ctx) {
 	const { sessionid } = ctx.request.header
 
 	const userId = await common.getUserId(sessionid)
@@ -707,5 +707,5 @@ async function resource_list_with_collect(ctx) {
 }
 
 module.exports = {
-	resource, resource_list, circle_with_user_join, resource_collect, upload_img, resource_list_with_myself, resource_list_with_collect,
+	resource, resource_list, circle_with_user_join, resource_collect, upload_img, resource_list_with_myself, list_with_user_collect,
 }
