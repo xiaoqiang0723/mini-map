@@ -683,7 +683,8 @@ async function list_with_user_collect(ctx) {
 
 	const userId = await common.getUserId(sessionid)
 
-	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').where('b.user_id = ?', userId)
+	const circleWithUserCollect = await common.pool.queryAsync(squel.select().from('resource', 'a').join('user_collect', 'b', 'a.id = b.resource_id').field('a.*')
+		.where('b.user_id = ?', userId)
 		.toString())
 
 	if (circleWithUserCollect.length > 0) {
