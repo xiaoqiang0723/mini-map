@@ -29,7 +29,7 @@ const schemaResource = {
 
 const schemaResourceGet = {
 	properties: {
-		resourceId: { type: 'string' },
+		resourceId: { type: 'string', minLength: 1 },
 	},
 	required: ['resourceId'],
 }

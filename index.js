@@ -7,6 +7,8 @@ const schedule = require('./src/schedule')
 
 register('/login', [methods.POST], login.login, { ignoreLogin: true })
 register('/get_auth_code', [methods.POST], login.get_auth_code, { ignoreLogin: true })
+register('/get_phone_umber', [methods.POST], login.get_phone_umber)
+register('/bind_phone', [methods.POST], login.bind_phone)
 register('/circle', [methods.POST, methods.PUT, methods.DELETE, methods.GET], circle.circle)
 register('/circle_join', [methods.POST], circle.circle_join)
 register('/circle_quit', [methods.POST], circle.circle_quit)

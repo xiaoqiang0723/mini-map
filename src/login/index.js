@@ -15,8 +15,6 @@ const schemaWithLogin = {
 		code: { type: 'string', minLength: 1 },
 		encryptedData: { type: 'string', minLength: 1 },
 		iv: { type: 'string', minLength: 1 },
-		phone: { type: 'string' },
-		authCode: { type: 'string' },
 	},
 	required: ['code', 'encryptedData', 'iv'],
 }
@@ -31,12 +29,77 @@ const wxLoginOption = {
 	JSON: true,
 }
 
-async function login(ctx) {
+async function get_phone_umber(ctx) {
 	const data = ctx.request.body
 
 	console.log('data', data)
 
 	const valid = ajv.compile(schemaWithLogin)
+
+	if (!valid(data)) {
+		ctx.body = {
+			statusCode: 400,
+			message: '参数错误',
+			data: {},
+		}
+		return
+	}
+
+	const wxLoginOptionCopy = _.cloneDeep(wxLoginOption)
+	wxLoginOptionCopy.qs.js_code = data.code
+	console.log('wx login option >>>>> ', JSON.stringify(wxLoginOptionCopy))
+	let result = await request(wxLoginOptionCopy)
+	console.log('wx login result <<<<< ', result)
+	result = JSON.parse(result)
+
+	if (!result.openid) {
+		ctx.body = {
+			status: 400,
+			message: '系统繁忙,请稍后再试',
+			data: {},
+		}
+		return
+	}
+
+	const pc = new WXBizDataCrypt(config.wx.app_id, result.session_key)
+	const phoneData = pc.decryptData(data.encryptedData, data.iv)
+	if (!phoneData || phoneData.watermark.appid !== config.wx.app_id) {
+		ctx.body = {
+			status: 400,
+			message: '用户信息验证失败',
+			data: {},
+		}
+	}
+
+	let phoneNumber = ''
+	if (phoneData && phoneData.purePhoneNumber) {
+		phoneNumber = phoneData.purePhoneNumber
+
+		await common.pool.queryAsync(squel.update().table('user').set('phone', phoneNumber).where('id = ?', phoneData.watermark.appid)
+			.toString())
+	}
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: { phone: phoneNumber },
+	}
+}
+
+const schemaWithBindPhone = {
+	properties: {
+		phone: { type: 'string', minLength: 1 },
+		authCode: { type: 'string', minLength: 1 },
+	},
+	required: ['phone', 'authCode'],
+}
+
+async function bind_phone(ctx) {
+	const data = ctx.request.body
+
+	console.log('data', data)
+
+	const valid = ajv.compile(schemaWithBindPhone)
 
 	if (!valid(data)) {
 		ctx.body = {
@@ -76,6 +139,38 @@ async function login(ctx) {
 			return
 		}
 	}
+
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	await common.pool.queryAsync(squel.update().table('user').set('phone', data.phone).where('id = ?', userId)
+		.toString())
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {},
+	}
+}
+
+async function login(ctx) {
+	const data = ctx.request.body
+
+	console.log('data', data)
+
+	const valid = ajv.compile(schemaWithLogin)
+
+	if (!valid(data)) {
+		ctx.body = {
+			statusCode: 400,
+			message: '参数错误',
+			data: {},
+		}
+		return
+	}
+
+
 	const wxLoginOptionCopy = _.cloneDeep(wxLoginOption)
 	wxLoginOptionCopy.qs.js_code = data.code
 	console.log('wx login option >>>>> ', JSON.stringify(wxLoginOptionCopy))
@@ -96,15 +191,6 @@ async function login(ctx) {
 
 	console.log('user', user)
 
-	if (!user && !data.phone && !data.authCode) {
-		ctx.body = {
-			status: 400,
-			message: '请输入手机号和验证码',
-			data: {},
-		}
-		return
-	}
-
 	const pc = new WXBizDataCrypt(config.wx.app_id, result.session_key)
 	const userData = pc.decryptData(data.encryptedData, data.iv)
 	if (!userData || userData.watermark.appid !== config.wx.app_id) {
@@ -121,7 +207,7 @@ async function login(ctx) {
 	if (!user) {
 		await common.pool.queryAsync(squel.insert().into('user').setFields({
 			id: userData.openId,
-			phone: data.phone,
+			// phone: data.phone,
 			nick_name: userData.nickName || '',
 			gender: userData.gender || 0,
 			city: userData.city || '',
@@ -157,7 +243,9 @@ async function login(ctx) {
 		message: 'success',
 		data: { sessionId,
 			userId: userData.openId,
-			lastJoinCircleId: (await common.redisClient.getAsync(`${userData.openId}_last_join_circle`)) || '' },
+			lastJoinCircleId: (await common.redisClient.getAsync(`${userData.openId}_last_join_circle`)) || '',
+			phone: user ? user.phone || '' : '' },
+
 	}
 }
 
@@ -289,6 +377,7 @@ async function get_auth_code(ctx) {
 	}
 }
 
+
 module.exports = {
-	login, get_auth_code,
+	login, get_auth_code, get_phone_umber, bind_phone,
 }
