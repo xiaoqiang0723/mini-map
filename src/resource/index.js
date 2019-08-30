@@ -502,7 +502,8 @@ async function resource_list(ctx) {
 			if (has_show_resourceList.length > 0) {
 				const imgs = await common.pool.queryAsync(squel.select().field('id').field('resource_id').field('pic_url')
 					.from('resource_pic')
-					.where('resource_id in ?', _.map(has_show_resourceList, v => v.id).toString()))
+					.where('resource_id in ?', _.map(has_show_resourceList, v => v.id))
+					.toString())
 
 				if (imgs.length > 0) {
 					const imgObj = _.groupBy(imgs, 'resource_id')
@@ -657,7 +658,8 @@ async function resource_list_with_myself(ctx) {
 	if (resourceList.length > 0) {
 		const imgs = await common.pool.queryAsync(squel.select().field('id').field('resource_id').field('pic_url')
 			.from('resource_pic')
-			.where('resource_id in ?', _.map(resourceList, v => v.id).toString()))
+			.where('resource_id in ?', _.map(resourceList, v => v.id))
+			.toString())
 
 		if (imgs.length > 0) {
 			const imgObj = _.groupBy(imgs, 'resource_id')
@@ -687,7 +689,8 @@ async function list_with_user_collect(ctx) {
 	if (circleWithUserCollect.length > 0) {
 		const imgs = await common.pool.queryAsync(squel.select().field('id').field('resource_id').field('pic_url')
 			.from('resource_pic')
-			.where('resource_id in ?', _.map(circleWithUserCollect, v => v.id).toString()))
+			.where('resource_id in ?', _.map(circleWithUserCollect, v => v.id))
+			.toString())
 
 		if (imgs.length > 0) {
 			const imgObj = _.groupBy(imgs, 'resource_id')
