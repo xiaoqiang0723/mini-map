@@ -63,6 +63,7 @@ async function get_phone_umber(ctx) {
 
 	const pc = new WXBizDataCrypt(config.wx.app_id, result.session_key)
 	const phoneData = pc.decryptData(data.encryptedData, data.iv)
+	console.log('phoneData', phoneData)
 	if (!phoneData || phoneData.watermark.appid !== config.wx.app_id) {
 		ctx.body = {
 			status: 400,
@@ -75,7 +76,7 @@ async function get_phone_umber(ctx) {
 	if (phoneData && phoneData.purePhoneNumber) {
 		phoneNumber = phoneData.purePhoneNumber
 
-		await common.pool.queryAsync(squel.update().table('user').set('phone', phoneNumber).where('id = ?', phoneData.watermark.appid)
+		await common.pool.queryAsync(squel.update().table('user').set('phone', phoneNumber).where('id = ?', result.openid)
 			.toString())
 	}
 
