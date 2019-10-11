@@ -176,7 +176,7 @@ async function circle(ctx) {
 
 		const bufferResult = await request(getQRCodeOptionCopy)
 
-		console.log('bufferResult', bufferResult)
+		console.log('bufferResult', JSON.parse(bufferResult).errcode, JSON.parse(bufferResult).errcode)
 
 		if (bufferResult.errcode === 0 && bufferResult.errmsg === 'ok') {
 			const resultWithPushImg = await putBuffer(bufferResult.buffer)
