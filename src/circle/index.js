@@ -35,7 +35,7 @@ const getQRCodeOption = {
 async function putBuffer(fileBuffer) {
 	let result
 	try {
-		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, fileBuffer)
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, Buffer.from(fileBuffer))
 		console.log(result)
 	} catch (e) {
 		console.log(e)
