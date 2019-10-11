@@ -36,7 +36,7 @@ async function putBuffer(fileBuffer) {
 	let result
 	try {
 		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, Buffer.from(fileBuffer))
-		console.log(result)
+		console.log('result', result)
 	} catch (e) {
 		console.log(e)
 	}
@@ -176,7 +176,7 @@ async function circle(ctx) {
 
 		const bufferResult = await request(getQRCodeOptionCopy)
 
-		// console.log('bufferResult', JSON.parse(bufferResult).errcode, JSON.parse(bufferResult).errcode)
+		console.log('bufferResult', bufferResult.errcode, bufferResult.errcode)
 
 		if (!bufferResult.errcode) {
 			const resultWithPushImg = await putBuffer(bufferResult)
