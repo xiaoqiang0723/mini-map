@@ -159,7 +159,7 @@ async function circle(ctx) {
 
 		const circleNumber = uuidV1(null, Array.from(10), 0).join('')
 
-		const circleId = uuidV4().replace(/-/g, '')
+		const circleId = uuidV4().replace(/-/g, '').substring(0, 16)
 
 		const userHasCircles = await common.pool.queryAsync(squel.select().from('circle_user').where('user_id = ?', userId).toString())
 		console.log('userHasCircles', userHasCircles)
@@ -205,7 +205,7 @@ async function circle(ctx) {
 			create_time: moment().unix(),
 		}).toString())
 
-		await common.pool.queryAsync(squel.update().table('resource_pic').set('resource_id', data.circleId).where('id = ?', data.imgId)
+		await common.pool.queryAsync(squel.update().table('resource_pic').set('resource_id', circleId).where('id = ?', data.imgId)
 			.toString())
 
 		await common.pool.queryAsync(squel.insert().into('circle_user').setFields({
@@ -434,6 +434,17 @@ async function circle_join(ctx) {
 		ctx.body = {
 			status: 400,
 			message: '您加入的圈子数量已超过最大限制',
+			data: {},
+		}
+		return
+	}
+
+	const circleObj = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', data.circleId).toString()))[0]
+
+	if (!circleObj) {
+		ctx.body = {
+			status: 400,
+			message: '您加入的圈子已解散',
 			data: {},
 		}
 		return

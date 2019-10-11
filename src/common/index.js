@@ -3,6 +3,7 @@ const crypto = require('crypto')
 const redis = require('redis')
 const bluebird = require('bluebird')
 const mysql = require('mysql')
+const moment = require('moment')
 const Connection = require('mysql/lib/Connection')
 const _ = require('lodash')
 
@@ -60,7 +61,7 @@ async function checkoutSession(ctx, next) {
 	await refreshSession(sessionid)
 
 	try {
-		console.log(`[mini-map request parameter ] ${ctx.request.ip} ${ctx.request.path} ${ctx.request.method} %j`, ctx.request.method === 'GET' ? JSON.stringify(ctx.query) : JSON.stringify(ctx.request.body))
+		console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')}`, `[mini-map request parameter ] ${ctx.request.ip} ${ctx.request.path} ${ctx.request.method} %j`, ctx.request.method === 'GET' ? JSON.stringify(ctx.query) : JSON.stringify(ctx.request.body))
 		// console.log('1111111111111111')
 		await next()
 	} catch (e) {
@@ -71,7 +72,7 @@ async function checkoutSession(ctx, next) {
 			data: {},
 		}
 	} finally {
-		console.log('[Parking-terminal Http Server Send] %j', JSON.stringify(ctx.body))
+		console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')}`, '[mini-map Http Server Send] %j', JSON.stringify(ctx.body))
 	}
 }
 

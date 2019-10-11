@@ -479,8 +479,11 @@ async function resource_list(ctx) {
 			}
 
 			if (has_show_resourceList.length >= 10 && !data.isFlush) {
-				ctx.status = 200
-				ctx.body = _.drop(has_show_resourceList, has_show_resourceList.length - 10)
+				ctx.body = {
+					status: 200,
+					message: 'success',
+					data: _.drop(has_show_resourceList, has_show_resourceList.length - 10),
+				}
 				return
 			}
 
