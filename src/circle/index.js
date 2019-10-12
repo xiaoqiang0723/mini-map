@@ -22,6 +22,7 @@ const client = new OSS({
 
 const getQRCodeOption = {
 	uri: config.wx.qr_code_url,
+	encoding: null,
 	method: 'POST',
 	qs: {
 		access_token: '',
