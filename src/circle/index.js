@@ -5,6 +5,7 @@ const uuidV1 = require('uuid/v1')
 const moment = require('moment')
 const OSS = require('ali-oss')
 const _ = require('lodash')
+const fsPromises = require('fs').promises
 const request = require('request-promise')
 
 const config = require('../../config')
@@ -32,10 +33,10 @@ const getQRCodeOption = {
 	json: true,
 }
 
-async function putBuffer(fileBuffer) {
+async function putBuffer(filehandle) {
 	let result
 	try {
-		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, Buffer.from(new Uint8Array(Buffer.from(fileBuffer))))
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, filehandle)
 		console.log('result', result)
 	} catch (e) {
 		console.log(e)
@@ -179,7 +180,9 @@ async function circle(ctx) {
 		console.log('bufferResult', bufferResult.errcode, bufferResult.errcode)
 
 		if (!bufferResult.errcode) {
-			const resultWithPushImg = await putBuffer(bufferResult)
+			const base64Img = bufferResult.toString('base64')
+			const dataBuffer = Buffer.from(base64Img, 'base64')
+			const resultWithPushImg = await putBuffer(dataBuffer)
 
 			if (resultWithPushImg) {
 				qrCodeUrl = resultWithPushImg.url
