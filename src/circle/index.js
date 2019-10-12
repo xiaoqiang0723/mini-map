@@ -3,9 +3,9 @@ const squel = require('squel')
 const uuidV4 = require('uuid/v4')
 const uuidV1 = require('uuid/v1')
 const moment = require('moment')
+const fs = require('fs')
 const OSS = require('ali-oss')
 const _ = require('lodash')
-const fsPromises = require('fs').promises
 const request = require('request-promise')
 
 const config = require('../../config')
@@ -181,20 +181,27 @@ async function circle(ctx) {
 
 		if (!bufferResult.errcode) {
 			const base64Img = bufferResult.toString('base64')
-			const dataBuffer = Buffer.from(base64Img, 'base64')
-			const resultWithPushImg = await putBuffer(dataBuffer)
+			const dataBuffer = new Uint8Array(Buffer.from(base64Img, 'base64'))
+			const imgname = `./${uuidV4().replace(/-/g, '')}.jpeg`
 
-			if (resultWithPushImg) {
-				qrCodeUrl = resultWithPushImg.url
+			fs.writeFileSync(imgname, dataBuffer)
 
-				const id = uuidV4().replace(/-/g, '')
-				await common.pool.queryAsync(squel.insert().into('resource_pic').setFields({
-					id,
-					resource_id: circleId,
-					pic_name: resultWithPushImg.name,
-					pic_url: resultWithPushImg.url,
-					create_time: moment().unix(),
-				}).toString())
+			if (fs.existsSync(imgname)) {
+				const resultWithPushImg = await putBuffer(imgname)
+				fs.unlinkSync(imgname)
+
+				if (resultWithPushImg) {
+					qrCodeUrl = resultWithPushImg.url
+
+					const id = uuidV4().replace(/-/g, '')
+					await common.pool.queryAsync(squel.insert().into('resource_pic').setFields({
+						id,
+						resource_id: circleId,
+						pic_name: resultWithPushImg.name,
+						pic_url: resultWithPushImg.url,
+						create_time: moment().unix(),
+					}).toString())
+				}
 			}
 		}
 
