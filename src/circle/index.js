@@ -5,7 +5,6 @@ const uuidV1 = require('uuid/v1')
 const moment = require('moment')
 const OSS = require('ali-oss')
 const _ = require('lodash')
-const fsPromises = require('fs').promises
 const request = require('request-promise')
 
 const config = require('../../config')
@@ -36,7 +35,7 @@ const getQRCodeOption = {
 async function putBuffer(fileBuffer) {
 	let result
 	try {
-		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, new Uint8Array(Buffer.from(fileBuffer)))
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, Buffer.from(new Uint8Array(Buffer.from(fileBuffer))))
 		console.log('result', result)
 	} catch (e) {
 		console.log(e)
