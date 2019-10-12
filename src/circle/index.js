@@ -5,6 +5,7 @@ const uuidV1 = require('uuid/v1')
 const moment = require('moment')
 const OSS = require('ali-oss')
 const _ = require('lodash')
+const fsPromises = require('fs').promises
 const request = require('request-promise')
 
 const config = require('../../config')
@@ -32,19 +33,25 @@ const getQRCodeOption = {
 	json: true,
 }
 
-async function putBuffer(fileBuffer) {
+async function putBuffer(filehandle) {
 	let result
 	try {
-		const buffer = Buffer.from(fileBuffer, 'hex')
-		const buffer2 = Buffer.alloc(buffer.length * 4)
-		buffer2.writeUInt8(buffer, 0)
-		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, buffer2)
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, filehandle)
 		console.log('result', result)
 	} catch (e) {
 		console.log(e)
 	}
 
 	return result
+}
+
+async function openAndClose(fileBuffer) {
+	let filehandle
+	try {
+		filehandle = await fsPromises.readFile(fileBuffer)
+	} finally {
+		if (filehandle !== undefined) { await filehandle.close() }
+	}
 }
 
 async function deleteMulti(fileNames) {
@@ -182,7 +189,7 @@ async function circle(ctx) {
 		console.log('bufferResult', bufferResult.errcode, bufferResult.errcode)
 
 		if (!bufferResult.errcode) {
-			const resultWithPushImg = await putBuffer(bufferResult)
+			const resultWithPushImg = await openAndClose(bufferResult)
 
 			if (resultWithPushImg) {
 				qrCodeUrl = resultWithPushImg.url
