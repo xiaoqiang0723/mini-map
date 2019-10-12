@@ -36,7 +36,7 @@ const getQRCodeOption = {
 async function putBuffer(filehandle) {
 	let result
 	try {
-		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.png`, filehandle)
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpg`, filehandle)
 		console.log('result', result)
 	} catch (e) {
 		console.log(e)
@@ -181,7 +181,7 @@ async function circle(ctx) {
 
 		if (!bufferResult.errcode) {
 			const base64Img = bufferResult.toString('base64')
-			const dataBuffer = Buffer.from(base64Img)
+			const dataBuffer = Buffer.from(base64Img, 'base64')
 			const imgname = `./${uuidV4().replace(/-/g, '')}.jpg`
 
 			fs.writeFileSync(imgname, dataBuffer)
