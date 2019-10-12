@@ -180,11 +180,11 @@ async function circle(ctx) {
 		console.log('bufferResult', bufferResult.errcode, bufferResult.errcode)
 
 		if (!bufferResult.errcode) {
-			// const base64Img = bufferResult.toString('base64')
-			const dataBuffer = new Uint8Array(Buffer.from(bufferResult))
-			const imgname = `./${uuidV4().replace(/-/g, '')}.png`
+			const base64Img = bufferResult.toString('base64')
+			const dataBuffer = Buffer.from(base64Img)
+			const imgname = `./${uuidV4().replace(/-/g, '')}.jpg`
 
-			fs.writeFileSync(imgname, dataBuffer, { encoding: 'base64' })
+			fs.writeFileSync(imgname, dataBuffer)
 
 			if (fs.existsSync(imgname)) {
 				const resultWithPushImg = await putBuffer(imgname)
