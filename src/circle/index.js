@@ -182,7 +182,7 @@ async function circle(ctx) {
 		if (!bufferResult.errcode) {
 			const base64Img = bufferResult.toString('base64')
 			const dataBuffer = new Uint8Array(Buffer.from(base64Img, 'base64'))
-			const imgname = `./${uuidV4().replace(/-/g, '')}.jpeg`
+			const imgname = `./${uuidV4().replace(/-/g, '')}.png`
 
 			fs.writeFileSync(imgname, dataBuffer, { encoding: 'base64' })
 
