@@ -48,7 +48,7 @@ async function putBuffer(filehandle) {
 async function openAndClose(fileBuffer) {
 	let filehandle
 	try {
-		filehandle = await fsPromises.readFile(fileBuffer)
+		filehandle = await fsPromises.readFile(Buffer.from(fileBuffer))
 		console.log('filehandle', filehandle)
 		await putBuffer(filehandle)
 	} finally {
