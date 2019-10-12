@@ -33,27 +33,16 @@ const getQRCodeOption = {
 	json: true,
 }
 
-async function putBuffer(filehandle) {
+async function putBuffer(fileBuffer) {
 	let result
 	try {
-		result = await client.putStream(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, filehandle)
+		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, new Uint8Array(Buffer.from(fileBuffer)))
 		console.log('result', result)
 	} catch (e) {
 		console.log(e)
 	}
 
 	return result
-}
-
-async function openAndClose(fileBuffer) {
-	let filehandle
-	try {
-		filehandle = await fsPromises.read(Buffer.from(fileBuffer))
-		console.log('filehandle', filehandle)
-		await putBuffer(filehandle)
-	} finally {
-		if (filehandle !== undefined) { await filehandle.close() }
-	}
 }
 
 async function deleteMulti(fileNames) {
@@ -191,7 +180,7 @@ async function circle(ctx) {
 		console.log('bufferResult', bufferResult.errcode, bufferResult.errcode)
 
 		if (!bufferResult.errcode) {
-			const resultWithPushImg = await openAndClose(bufferResult)
+			const resultWithPushImg = await putBuffer(bufferResult)
 
 			if (resultWithPushImg) {
 				qrCodeUrl = resultWithPushImg.url
