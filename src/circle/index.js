@@ -36,7 +36,7 @@ const getQRCodeOption = {
 async function putBuffer(filehandle) {
 	let result
 	try {
-		result = await client.put(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, filehandle)
+		result = await client.putStream(`imgs/${uuidV4().replace(/-/g, '')}.jpeg`, filehandle)
 		console.log('result', result)
 	} catch (e) {
 		console.log(e)
@@ -49,6 +49,8 @@ async function openAndClose(fileBuffer) {
 	let filehandle
 	try {
 		filehandle = await fsPromises.readFile(fileBuffer)
+		console.log('filehandle', filehandle)
+		await putBuffer(filehandle)
 	} finally {
 		if (filehandle !== undefined) { await filehandle.close() }
 	}
