@@ -184,7 +184,7 @@ async function circle(ctx) {
 			const dataBuffer = new Uint8Array(Buffer.from(bufferResult))
 			const imgname = `./${uuidV4().replace(/-/g, '')}.png`
 
-			fs.writeFileSync(imgname, dataBuffer)
+			fs.writeFileSync(imgname, dataBuffer, { encoding: 'base64' })
 
 			if (fs.existsSync(imgname)) {
 				const resultWithPushImg = await putBuffer(imgname)
