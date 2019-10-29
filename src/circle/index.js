@@ -47,8 +47,9 @@ async function putBuffer(filehandle) {
 }
 
 async function deleteMulti(fileNames) {
-	const clientCopy = _.cloneDeep(client)
-	const result = await clientCopy.deleteMulti(fileNames, { quite: true })
+	// const clientCopy = _.cloneDeep(client)
+	console.log('fileNames',fileNames)
+	const result = await client.deleteMulti(fileNames, { quite: true })
 
 	console.log('result', result)
 
