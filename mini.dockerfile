@@ -18,4 +18,4 @@ COPY ./test ./test
 
 CMD node . --mini-map-app-name="mini-map"
 
-EXPOSE 443
+EXPOSE 6666
