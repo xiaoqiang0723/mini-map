@@ -277,9 +277,9 @@ async function resource(ctx) {
 			return
 		}
 
-		const { sessionid } = ctx.request.header
+		// const { sessionid } = ctx.request.header
 
-		const userId = await common.getUserId(sessionid)
+		// const userId = await common.getUserId(sessionid)
 
 		const resourceWithId = (await common.pool.queryAsync(squel.select().from('resource').field('user_id').where('id = ?', data.resourceId)
 			.toString()))[0]
@@ -293,14 +293,14 @@ async function resource(ctx) {
 			return
 		}
 
-		if (resourceWithId.user_id !== userId) {
-			ctx.body = {
-				status: 400,
-				message: '您无权限编辑该资源',
-				data: {},
-			}
-			return
-		}
+		// if (resourceWithId.user_id !== userId) {
+		// 	ctx.body = {
+		// 		status: 400,
+		// 		message: '您无权限编辑该资源',
+		// 		data: {},
+		// 	}
+		// 	return
+		// }
 
 		let connon
 
@@ -456,16 +456,16 @@ async function resource_list(ctx) {
 
 		const userId = await common.getUserId(sessionid)
 
-		const flushCount = await common.redisClient.getAsync(`${userId}_flushCount`) || 0
+		// const flushCount = await common.redisClient.getAsync(`${userId}_flushCount`) || 0
 
-		if (data.isFlush && Number(flushCount) >= config.limit.reflushCount) {
-			ctx.body = {
-				status: 400,
-				message: '您已经刷新超过3次了',
-				data: {},
-			}
-			return
-		}
+		// if (data.isFlush && Number(flushCount) >= config.limit.reflushCount) {
+		// 	ctx.body = {
+		// 		status: 400,
+		// 		message: '您已经刷新超过3次了',
+		// 		data: {},
+		// 	}
+		// 	return
+		// }
 
 		let returnList = []
 
