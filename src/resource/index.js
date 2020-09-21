@@ -470,22 +470,22 @@ async function resource_list(ctx) {
 		let returnList = []
 
 		if (data.lng && data.lat) {
-			const has_show_resourceStr = await common.redisClient.getAsync(`${userId}_has_show_resources`)
+			// const has_show_resourceStr = await common.redisClient.getAsync(`${userId}_has_show_resources`)
 
 			let has_show_resourceList = []
 
-			if (has_show_resourceStr) {
-				has_show_resourceList = JSON.parse(has_show_resourceStr)
-			}
+			// if (has_show_resourceStr) {
+			// 	has_show_resourceList = JSON.parse(has_show_resourceStr)
+			// }
 
-			if (has_show_resourceList.length >= 10 && !data.isFlush) {
-				ctx.body = {
-					status: 200,
-					message: 'success',
-					data: _.drop(has_show_resourceList, has_show_resourceList.length - 10),
-				}
-				return
-			}
+			// if (has_show_resourceList.length >= 10 && !data.isFlush) {
+			// 	ctx.body = {
+			// 		status: 200,
+			// 		message: 'success',
+			// 		data: _.drop(has_show_resourceList, has_show_resourceList.length - 10),
+			// 	}
+			// 	return
+			// }
 
 			const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
 				.toString())
@@ -518,8 +518,8 @@ async function resource_list(ctx) {
 				}
 			}
 
-			await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
-			await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
+			// await common.redisClient.setAsync(`${userId}_has_show_resources`, JSON.stringify(has_show_resourceList))
+			// await common.redisClient.expireAsync(`${userId}_has_show_resources`, 60 * 60)
 			await common.redisClient.delAsync(`${userId}_collect`)
 			await common.redisClient.setAsync(`${userId}_last_join_circle`, `${data.circleId}`)
 			if (data.isFlush) {
