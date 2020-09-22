@@ -309,7 +309,7 @@ async function resource(ctx) {
 
 			await connon.beginTransactionAsync()
 
-			if (data.imgIds) {
+			if (data.imgIds && data.imgIds.length > 0) {
 				const imgs = await connon.queryAsync(squel.select().from('resource_pic').where('resource_id = ?', data.resourceId).toString())
 
 				const deleteImgs = _.differenceBy(imgs, _.map(data.imgIds, v => ({ id: v })), 'id')
@@ -318,7 +318,7 @@ async function resource(ctx) {
 					await deleteMulti(_.map(deleteImgs, v => v.pic_name))
 				}
 
-				await common.pool.queryAsync(squel.update().table('resource_pic').set('resource_id', data.resourceId).where('id in ?', data.imgIds)
+				await connon.queryAsync(squel.update().table('resource_pic').set('resource_id', data.resourceId).where('id in ?', data.imgIds)
 					.toString())
 			}
 
