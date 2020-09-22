@@ -487,16 +487,16 @@ async function resource_list(ctx) {
 			// 	return
 			// }
 
-			const resources = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
+			returnList = await common.pool.queryAsync(squel.select().from('resource').where('circle_id = ?', data.circleId).order('id', false)
 				.toString())
 
-			const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(Number(v.lat) - Number(data.lat)) <= 10) && (Math.abs(Number(v.lng) - Number(data.lng)) <= 10)), has_show_resourceList, 'id')
+			// const resourcesWithNear = _.differenceBy(_.filter(resources, v => (Math.abs(Number(v.lat) - Number(data.lat)) <= 10) && (Math.abs(Number(v.lng) - Number(data.lng)) <= 10)), has_show_resourceList, 'id')
 
-			if (resourcesWithNear.length >= 10) {
-				returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
-			} else {
-				returnList = _.sortBy(resources, () => (0.5 - Math.random())).slice(0, 10) || []
-			}
+			// if (resourcesWithNear.length >= 10) {
+			// 	returnList = _.sortBy(resourcesWithNear, () => (0.5 - Math.random())).slice(0, 10) || []
+			// } else {
+			// 	returnList = _.sortBy(resources, () => (0.5 - Math.random())).slice(0, 10) || []
+			// }
 
 			returnList = _.map(returnList, v => _.assignIn({}, v))
 
