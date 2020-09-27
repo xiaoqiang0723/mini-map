@@ -408,10 +408,10 @@ async function resource(ctx) {
 				return
 			}
 
-			if (userId !== circle.user_id) {
-				ctx.body.message = '您没有权限删除该资源!'
-				return
-			}
+			// if (userId !== circle.user_id) {
+			// 	ctx.body.message = '您没有权限删除该资源!'
+			// 	return
+			// }
 		}
 
 		await common.pool.queryAsync(squel.delete().from('resource').where('id = ?', data.resourceId).toString())
