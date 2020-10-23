@@ -543,7 +543,23 @@ async function resource_list(ctx) {
 
 			if (!data.isFree) {
 				let has_new_context = false
-				let voucher
+				// let voucher
+
+				const voucher = (await common.pool.queryAsync(squel.select().from('voucher').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
+					.where('voucher_status = ?', 0)
+					.order('id', true)[0]
+					.limit(1)
+					.toString()))
+				if (!voucher) {
+					ctx.body = {
+						status: 400,
+						message: '您的刷新券不足，请购买后重试',
+						data: [],
+					}
+
+					return
+				}
+
 				const has_show_resourceStr = await common.redisClient.getAsync(`user_${data.circleId}_has_show`)
 
 				if (has_show_resourceStr) {
@@ -559,20 +575,6 @@ async function resource_list(ctx) {
 				}
 
 				if (returnList.length > 0) {
-					[voucher] = (await common.pool.queryAsync(squel.select().from('voucher').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
-						.where('voucher_status = ?', 0)
-						.order('id', true)
-						.limit(1)
-						.toString()))
-					if (!voucher) {
-						ctx.body = {
-							status: 400,
-							message: '您的刷新券不足，请购买后重试',
-							data: [],
-						}
-
-						return
-					}
 					has_new_context = true
 				}
 
