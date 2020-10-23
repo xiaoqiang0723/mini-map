@@ -48,7 +48,7 @@ async function putBuffer(filehandle) {
 
 async function deleteMulti(fileNames) {
 	// const clientCopy = _.cloneDeep(client)
-	console.log('fileNames',fileNames)
+	console.log('fileNames', fileNames)
 	const result = await client.deleteMulti(fileNames, { quite: true })
 
 	console.log('result', result)
@@ -125,6 +125,7 @@ async function circle(ctx) {
 		const refreshCount = await common.redisClient.getAsync(`${data.circleId}_reflush`)
 
 		circleWithId.refresh_count = refreshCount || 0
+		circleWithId.use_time = moment().add('month', 1).format('YYYY-MM-DD')
 
 		ctx.body = {
 			status: 200,
@@ -639,6 +640,131 @@ async function circle_list(ctx) {
 	}
 }
 
+const schemaCircleVoucherEdit = {
+	properties: {
+		circleId: { type: 'string' },
+		voucherMoney: { type: 'number' },
+	},
+	required: ['circleId', 'voucherMoney'],
+}
+
+async function circle_voucher_edit(ctx) {
+	const data = ctx.request.body
+
+	const valid = ajv.compile(schemaCircleVoucherEdit)
+
+	if (!valid(data)) {
+		ctx.body = {
+			status: 400,
+			message: '参数错误',
+			data: {},
+		}
+		return
+	}
+
+	if (!data.voucherMoney) {
+		ctx.body = {
+			status: 400,
+			message: '请输入刷新券价格',
+			data: {},
+		}
+		return
+	}
+
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const circle_detail = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', data.circleId).toString()))[0]
+
+	if (!circle_detail) {
+		ctx.body = {
+			status: 400,
+			message: '该圈子不存在',
+			data: {},
+		}
+
+		return
+	}
+
+	if (circle_detail.user_id !== userId) {
+		ctx.body = {
+			status: 400,
+			message: '您没有修改价格的权限',
+			data: {},
+		}
+
+		return
+	}
+
+	await common.pool.queryAsync(squel.update().table('circle').set('voucher_price', data.voucherMoney).where('id = ?', data.circleId)
+		.toString())
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {},
+	}
+}
+
+const schemaCircleNoticeEdit = {
+	properties: {
+		circleId: { type: 'string' },
+		notice: { type: 'string' },
+	},
+	required: ['circleId', 'notice'],
+}
+
+async function circle_notice_edit(ctx) {
+	const data = ctx.request.body
+
+	const valid = ajv.compile(schemaCircleNoticeEdit)
+
+	if (!valid(data)) {
+		ctx.body = {
+			status: 400,
+			message: '参数错误',
+			data: {},
+		}
+		return
+	}
+
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const circle_detail = (await common.pool.queryAsync(squel.select().from('circle').where('id = ?', data.circleId).toString()))[0]
+
+	if (!circle_detail) {
+		ctx.body = {
+			status: 400,
+			message: '该圈子不存在',
+			data: {},
+		}
+
+		return
+	}
+
+	if (circle_detail.user_id !== userId) {
+		ctx.body = {
+			status: 400,
+			message: '您没有修改公告的权限',
+			data: {},
+		}
+
+		return
+	}
+
+	await common.pool.queryAsync(squel.update().table('circle').set('notice', data.notice).where('id = ?', data.circleId)
+		.toString())
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: {},
+	}
+}
+
 module.exports = {
-	circle, circle_join, circle_quit, circle_list,
+	circle, circle_join, circle_quit, circle_list, circle_voucher_edit, circle_notice_edit,
 }

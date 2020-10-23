@@ -174,9 +174,9 @@ async function login(ctx) {
 
 	const wxLoginOptionCopy = _.cloneDeep(wxLoginOption)
 	wxLoginOptionCopy.qs.js_code = data.code
-	console.log('wx login option >>>>> ', JSON.stringify(wxLoginOptionCopy))
+	console.log('wx login option >>>>> %j', JSON.stringify(wxLoginOptionCopy))
 	let result = await request(wxLoginOptionCopy)
-	console.log('wx login result <<<<< ', result)
+	console.log('wx login result <<<<< %j', result)
 	result = JSON.parse(result)
 
 	if (!result.openid) {
@@ -235,9 +235,10 @@ async function login(ctx) {
 	}
 
 	const sessionId = common.getSessionId(userData.openId)
-	common.refreshSession(sessionId)
 
 	await common.redisClient.setAsync(sessionId, JSON.stringify(userData))
+
+	await common.refreshSession(sessionId)
 
 	ctx.body = {
 		status: 200,
@@ -246,7 +247,6 @@ async function login(ctx) {
 			userId: userData.openId,
 			lastJoinCircleId: (await common.redisClient.getAsync(`${userData.openId}_last_join_circle`)) || '',
 			phone: user ? user.phone || '' : '' },
-
 	}
 }
 
@@ -378,7 +378,41 @@ async function get_auth_code(ctx) {
 	}
 }
 
+async function get_user_voucher_count(ctx) {
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const voucher_count_obj = (await common.pool.queryAsync(squel.select().from('voucher').field('count(id) as voucher_count').where('user_id = ?', userId)
+		.where('voucher_status = ?', 0)
+		.toString()))[0] || {}
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: { voucher_count: voucher_count_obj.voucher_count || 0 },
+	}
+}
+
+async function get_user_info(ctx) {
+	const { sessionid } = ctx.request.header
+
+	const userId = await common.getUserId(sessionid)
+
+	const user = (await common.pool.queryAsync(squel.select().from('user').where('id = ?', userId).toString()))[0] || {}
+
+	const voucher_count_obj = (await common.pool.queryAsync(squel.select().from('voucher').field('count(id) as voucher_count').where('user_id = ?', userId)
+		.where('voucher_status = ?', 0)
+		.toString()))[0] || {}
+
+	ctx.body = {
+		status: 200,
+		message: 'success',
+		data: { voucher_count: voucher_count_obj.voucher_count || 0, user_balance: user.balance, user_integral: user.integral },
+	}
+}
+
 
 module.exports = {
-	login, get_auth_code, get_phone_umber, bind_phone,
+	login, get_auth_code, get_phone_umber, bind_phone, get_user_voucher_count, get_user_info,
 }

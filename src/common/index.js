@@ -5,6 +5,7 @@ const bluebird = require('bluebird')
 const mysql = require('mysql')
 const moment = require('moment')
 const Connection = require('mysql/lib/Connection')
+const uuid = require('uuid/v4')
 const _ = require('lodash')
 
 const { router } = require('../koa')
@@ -26,6 +27,10 @@ const methods = {
 	POST: 'post',
 	PUT: 'put',
 	DELETE: 'delete',
+}
+
+function getUUID() {
+	uuid().replace(/-/g, '')
 }
 
 function getSessionId(openId) {
@@ -88,5 +93,5 @@ function register(path, requestMethod, method, option = {}) {
 }
 
 module.exports = {
-	register, methods, router, getSessionId, redisClient, refreshSession, pool, getUserId,
+	register, methods, router, getSessionId, redisClient, refreshSession, pool, getUserId, getUUID,
 }
