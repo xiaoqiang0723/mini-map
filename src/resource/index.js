@@ -547,9 +547,9 @@ async function resource_list(ctx) {
 
 				const voucher = (await common.pool.queryAsync(squel.select().from('voucher').where('user_id = ?', userId).where('circle_id = ?', data.circleId)
 					.where('voucher_status = ?', 0)
-					.order('id', true)[0]
+					.order('id', true)
 					.limit(1)
-					.toString()))
+					.toString()))[0]
 				if (!voucher) {
 					ctx.body = {
 						status: 400,
